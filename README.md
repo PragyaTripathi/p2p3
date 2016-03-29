@@ -1,6 +1,6 @@
 # P2P3 #
 
-## Things to install for development ##
+## Install for development ##
 * Rust version 1.8
 * Atom editor
 
