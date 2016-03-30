@@ -5,3 +5,4 @@ authors = ["Matthew Kellogg <kellogg92@gmail.com>"]
 
 [dependencies]
 iron="*"
+crust="*"
