@@ -4,6 +4,7 @@ use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
             SocketAddr, OurConnectionInfo,
             PeerId};
 use std::time::Duration;
+use std::sync::{Arc, Mutex};
 
 struct Guid {
     lowBits: i64,
@@ -134,4 +135,12 @@ impl Network {
             self.received_bytes = 0;
         }
     }
+}
+
+fn handle_new_peer(service: &Service, protected_network: Arc<Mutex<Network>>, peer_id: PeerId) -> usize {
+    let mut network = unwrap_result!(protected_network.lock());
+    let peer_index = network.next_peer_index();
+    let _ = network.nodes.insert(peer_index, peer_id);
+    network.print_connected_nodes(service);
+    peer_index
 }
