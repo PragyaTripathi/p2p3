@@ -40,15 +40,16 @@ trait Pastry {
     }
 }
 
-struct Network {
-    nodes: HashMap<usize, PeerId>,
-    our_connection_infos: BTreeMap<u32, OurConnectionInfo>,
-    performance_start: ::time::SteadyTime,
-    performance_interval: ::time::Duration,
-    received_msgs: u32,
-    received_bytes: usize,
-    peer_index: usize,
-    connection_info_index: u32,
+// Make it pub for test
+pub struct Network {
+    pub nodes: HashMap<usize, PeerId>,
+    pub our_connection_infos: BTreeMap<u32, OurConnectionInfo>,
+    pub performance_start: ::time::SteadyTime,
+    pub performance_interval: ::time::Duration,
+    pub received_msgs: u32,
+    pub received_bytes: usize,
+    pub peer_index: usize,
+    pub connection_info_index: u32,
 }
 
 // simple "routing table" without any structure
@@ -137,7 +138,7 @@ impl Network {
     }
 }
 
-fn handle_new_peer(service: &Service, protected_network: Arc<Mutex<Network>>, peer_id: PeerId) -> usize {
+pub fn handle_new_peer(service: &Service, protected_network: Arc<Mutex<Network>>, peer_id: PeerId) -> usize {
     let mut network = unwrap_result!(protected_network.lock());
     let peer_index = network.next_peer_index();
     let _ = network.nodes.insert(peer_index, peer_id);
