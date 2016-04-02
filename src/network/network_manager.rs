@@ -1,12 +1,18 @@
-mod network_manager;
+use std;
+use std::collections::{BTreeMap, HashMap};
+use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
+            SocketAddr, OurConnectionInfo,
+            PeerId};
+use std::time::Duration;
 
-struct GUID {
+struct Guid {
     lowBits: i64,
     higtBits: i64,
 }
 
-struct DATA {
-
+struct Data {
+    // TODO: TBD
+    uri: String,
 }
 
 /*
@@ -18,15 +24,17 @@ value = get(GUID)
     Retrieves the data associated with GUID from one of the nodes responsible for it.
 */
 trait Pastry {
-    fn put(id: GUID, data: DATA) {
+    fn put(id: Guid, data: Data) {
         // TODO:
     }
 
-    fn remove(id: GUID) {
+    fn remove(id: Guid) {
         // TODO::
     }
 
-    fn get(id: GUID) -> DATA {
+    fn get(id: Guid) -> Data {
+        let res = Data{ uri : "some path".to_string()};
+        res
         // TODO:
     }
 }
@@ -34,8 +42,8 @@ trait Pastry {
 struct Network {
     nodes: HashMap<usize, PeerId>,
     our_connection_infos: BTreeMap<u32, OurConnectionInfo>,
-    performance_start: time::SteadyTime,
-    performance_interval: time::Duration,
+    performance_start: ::time::SteadyTime,
+    performance_interval: ::time::Duration,
     received_msgs: u32,
     received_bytes: usize,
     peer_index: usize,
@@ -48,8 +56,8 @@ impl Network {
         Network {
             nodes: HashMap::new(),
             our_connection_infos: BTreeMap::new(),
-            performance_start: time::SteadyTime::now(),
-            performance_interval: time::Duration::seconds(10),
+            performance_start: ::time::SteadyTime::now(),
+            performance_interval: ::time::Duration::seconds(10),
             received_msgs: 0,
             received_bytes: 0,
             peer_index: 0,
@@ -115,9 +123,9 @@ impl Network {
         self.received_msgs += 1;
         self.received_bytes += msg_size;
         if self.received_msgs == 1 {
-            self.performance_start = time::SteadyTime::now();
+            self.performance_start = ::time::SteadyTime::now();
         }
-        if self.performance_start + self.performance_interval < time::SteadyTime::now() {
+        if self.performance_start + self.performance_interval < ::time::SteadyTime::now() {
             println!("\nReceived {} messages with total size of {} bytes in last {} seconds.",
                      self.received_msgs,
                      self.received_bytes,
