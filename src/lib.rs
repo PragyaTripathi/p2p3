@@ -5,6 +5,7 @@ extern crate git2;
 extern crate maidsafe_utilities;
 extern crate rustc_serialize;
 extern crate docopt;
+extern crate rand;
 
 mod commit;
 mod compile;
