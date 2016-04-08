@@ -52,8 +52,6 @@ pub struct Network {
     pub received_bytes: usize,
     pub peer_index: usize,
     pub connection_info_index: u32,
-
-    pub seqNum: u32,
 }
 
 // simple "routing table" without any structure
@@ -68,7 +66,6 @@ impl Network {
             received_bytes: 0,
             peer_index: 0,
             connection_info_index: 0,
-            seqNum: 0,
         }
     }
 

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct Message {
     //receivedMsgs: String,
     //peerId: PeerId,
-    seqNum: u32,
+    seq_num: u32,
     source: PeerId,
     message: String,
     kind: Kind,
@@ -14,11 +14,8 @@ pub struct Message {
 impl Message {
     pub fn new(src: PeerId, msg: String) -> Message {
         Message {
-            //nodes: HashMap::new(),
-            //receivedMsgs: "",
             source: src,
-            //peerId: null,
-            seqNum: 0,
+            seq_num: 0,
             message: msg,
             kind: Kind::Nomal,
         }
@@ -26,11 +23,8 @@ impl Message {
 
     pub fn new_with_kind(k: Kind, src: PeerId, msg: String) -> Message {
         Message {
-            //nodes: HashMap::new(),
-            //receivedMsgs: "",
             source: src,
-            //peerId: null,
-            seqNum: 0,
+            seq_num: 0,
             message: msg,
             kind: k,
         }
@@ -40,7 +34,7 @@ impl Message {
         return self.receivedMsgs;
     }*/
     pub fn get_seq_num(&self) -> u32 {
-        self.seqNum
+        self.seq_num
     }
 
     pub fn get_msg(&self) -> String {
@@ -56,7 +50,7 @@ impl Message {
     }
 
     pub fn set_seq_num(&mut self, num: u32) {
-        self.seqNum = num;
+        self.seq_num = num;
     }
 }
 

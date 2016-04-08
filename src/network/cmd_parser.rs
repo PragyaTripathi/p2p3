@@ -24,10 +24,10 @@ pub fn print_usage() {
     connect <our-info-id> <their-info>            - Initiate a connection to the remote peer
     send <peer> <message>                         - Send a string to the given peer
     send-all <message>                            - Send a string to all connections
+    broadcast <message>                           - Broadcast
     list                                          - List existing connections and UDP sockets
     stop                                          - Exit the app
     help                                          - Print this help
-    broadcast
 # Where
     <our-file>      - The file where we'll read/write our connection info
     <their-file>    - The file where we'll read their connection info.
