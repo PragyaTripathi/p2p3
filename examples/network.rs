@@ -13,13 +13,15 @@ extern crate p2p3;
 extern crate service_discovery;
 extern crate bincode;
 
-use rustc_serialize::{Decodable, Decoder, json};
+use rustc_serialize::json;
+//use rustc_serialize::{Decodable, Decoder, json};
 
-use docopt::Docopt;
+//use docopt::Docopt;
 use std::io;
 //
 use std::sync::mpsc::channel;
-use crust::{Service, ConnectionInfoResult, PeerId};
+//use crust::{Service, ConnectionInfoResult, PeerId};
+use crust::{Service, ConnectionInfoResult};
 use std::sync::{Arc, Mutex};
 use p2p3::network::network_manager::Network;
 use p2p3::network::network_manager::handle_new_peer;
@@ -31,8 +33,8 @@ use p2p3::network::msg_passer::MsgPasser;
 use std::thread;
 use std::str::FromStr;
 // For broadcast
-use service_discovery::ServiceDiscovery;
-use std::iter;
+//use service_discovery::ServiceDiscovery;
+//use std::iter;
 use bincode::rustc_serialize::{encode, decode}; // Use for encode and decode
 
 
@@ -53,7 +55,7 @@ fn main() {
     /* If this file name is "file_name.rs",
      * it will read the config file named "file_name.crust.config".
      */
-    let mut config = unwrap_result!(::crust::read_config_file()); // ".crust.config"
+    let config = unwrap_result!(::crust::read_config_file()); // ".crust.config"
 
     let mut service = unwrap_result!(Service::with_config(event_sender, &config));
     unwrap_result!(service.start_listening_tcp());
@@ -92,7 +94,7 @@ fn main() {
                                 let decoded_msg: Message = decode(&bytes[..]).unwrap();
                                 let msg = decoded_msg.get_msg();
 
-                                let msg_clone = msg.clone();
+                                //let msg_clone = msg.clone();
 
                                 /*
                                  * Handle brocast message
@@ -142,13 +144,13 @@ fn main() {
                             // Invoked when we get a bootstrap connection to a new peer.
                             crust::Event::BootstrapConnect(peer_id) => {
                                 println!("\nBootstrapConnect with peer {:?}", peer_id);
-                                let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
+                                //let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                                 //let _ = bs_sender.send(peer_index);
                             },
                             // Invoked when a bootstrap peer connects to us.
                             crust::Event::BootstrapAccept(peer_id) => {
                                 println!("\nBootstrapAccept with peer {:?}", peer_id);
-                                let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
+                                //let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                                 //let _ = bs_sender.send(peer_index);
                             },
                             // Invoked when a connection to a new peer is established.
@@ -252,7 +254,7 @@ fn main() {
                 unwrap_result!(service.lock()).connect(our_info, their_info);
             }
             UserCommand::Send(peer_index, message) => {
-                let mut network = unwrap_result!(network.lock());
+                let network = unwrap_result!(network.lock());
 
                 let new_msg = unwrap_result!(msg_handler.lock()).getNewMsg(message);
                 let msg = Message::new(my_id, new_msg);

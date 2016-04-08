@@ -34,8 +34,8 @@ pub fn run_c(input: &str) -> Result<String, String> {
         Some(cc) => {
             let mut cc= cc;
             print!("{:?}", cc);
-            cc.arg(&c_file).arg(&format!("/link /OUT:{}", exe.to_str().unwrap())).output().unwrap() },
-        None => Command::new("cc").arg(&c_file).arg("-o").arg(&exe).output().unwrap()
+            cc.current_dir(temp_dir_name).arg(&c_file).arg(&format!("/link /OUT:{}", exe.to_str().unwrap())).output().unwrap() },
+        None => Command::new("cc").current_dir(temp_dir_name).arg(&c_file).arg("-o").arg(&exe).output().unwrap()
     };
 
     if !output.status.success() {

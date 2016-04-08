@@ -1,9 +1,10 @@
-use std;
+//use std;
 use std::collections::{BTreeMap, HashMap};
-use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
-            SocketAddr, OurConnectionInfo,
-            PeerId};
-use std::time::Duration;
+use crust::{Service, OurConnectionInfo, PeerId};
+//use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
+//            SocketAddr, OurConnectionInfo,
+//            PeerId};
+//use std::time::Duration;
 use std::sync::{Arc, Mutex};
 
 /*
