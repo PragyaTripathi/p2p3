@@ -1,7 +1,5 @@
-use rustc_serialize::{Decodable, Decoder, json};
+use rustc_serialize::{Decodable, Decoder};
 use docopt::Docopt;
-use std::io;
-use std::iter;
 
 static CLI_USAGE: &'static str = "
 Usage:
@@ -23,8 +21,8 @@ pub fn print_usage() {
     prepare-connection-info                       - Prepare a connection info
     connect <our-info-id> <their-info>            - Initiate a connection to the remote peer
     send <peer> <message>                         - Send a string to the given peer
-    send-all <message>                            - Send a string to all connections
-    broadcast <message>                           - Broadcast
+    send-all <message>                            - Send a string to all <ADJACENT> nodes
+    broadcast <message>                           - Broadcast a string to <ALL> nodes
     list                                          - List existing connections and UDP sockets
     stop                                          - Exit the app
     help                                          - Print this help
@@ -110,8 +108,6 @@ pub fn parse_user_command(cmd: String) -> Option<UserCommand> {
     }   // For brocast
     else if args.cmd_broadcast {
         let msg = args.arg_message.join(" ");
-        //let mStr = msg.to_string();
-        //let s: String = msg.iter().cloned().collect();        //let newMsg = "broadcast ".to_string() + mStr;
         Some(UserCommand::Broadcast(msg))
     } else if args.cmd_help {
         print_usage();

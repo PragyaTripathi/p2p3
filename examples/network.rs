@@ -6,21 +6,14 @@ extern crate rustc_serialize;
 extern crate docopt;
 #[macro_use]
 extern crate maidsafe_utilities; // macro unwrap!()
-//
 extern crate crust;
 extern crate p2p3;
-// For broadcast
 extern crate service_discovery;
 extern crate bincode;
 
 use rustc_serialize::json;
-//use rustc_serialize::{Decodable, Decoder, json};
-
-//use docopt::Docopt;
 use std::io;
-//
 use std::sync::mpsc::channel;
-//use crust::{Service, ConnectionInfoResult, PeerId};
 use crust::{Service, ConnectionInfoResult};
 use std::sync::{Arc, Mutex};
 use p2p3::network::network_manager::Network;
@@ -32,9 +25,6 @@ use p2p3::network::message::{Message, Kind};
 use p2p3::network::msg_passer::MsgPasser;
 use std::thread;
 use std::str::FromStr;
-// For broadcast
-//use service_discovery::ServiceDiscovery;
-//use std::iter;
 use bincode::rustc_serialize::{encode, decode}; // Use for encode and decode
 
 
@@ -87,14 +77,12 @@ fn main() {
                         match event {
                             // Invoked when a new message is received. Passes the message.
                             crust::Event::NewMessage(peer_id, bytes) => {
-                                let message_length = bytes.len();
+                                //let message_length = bytes.len();
                                 let mut network = unwrap_result!(network2.lock());
-                                network.record_received(message_length);
+                                // network.record_received(message_length);
 
                                 let decoded_msg: Message = decode(&bytes[..]).unwrap();
                                 let msg = decoded_msg.get_msg();
-
-                                //let msg_clone = msg.clone();
 
                                 /*
                                  * Handle brocast message
@@ -102,7 +90,7 @@ fn main() {
                                 match decoded_msg.get_kind() {
                                     Kind::Broadcast => {
                                         if decoded_msg.get_src() != my_id &&
-                                            unwrap_result!(msg_handler2.lock()).handleBroadcast(decoded_msg.get_seq_num()) {
+                                            unwrap_result!(msg_handler2.lock()).handle_broadcast(decoded_msg.get_seq_num()) {
                                             println!("\nReceived from {:?} message: {:?}",
                                                      peer_id, msg);
 
@@ -144,12 +132,14 @@ fn main() {
                             // Invoked when we get a bootstrap connection to a new peer.
                             crust::Event::BootstrapConnect(peer_id) => {
                                 println!("\nBootstrapConnect with peer {:?}", peer_id);
+                                handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                                 //let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                                 //let _ = bs_sender.send(peer_index);
                             },
                             // Invoked when a bootstrap peer connects to us.
                             crust::Event::BootstrapAccept(peer_id) => {
                                 println!("\nBootstrapAccept with peer {:?}", peer_id);
+                                handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                                 //let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                                 //let _ = bs_sender.send(peer_index);
                             },
@@ -198,7 +188,6 @@ fn main() {
         },
     };
 
-    // print the usage
     cmd_parser::print_usage();
 //    println!("Debug string: 123");
 
@@ -256,8 +245,7 @@ fn main() {
             UserCommand::Send(peer_index, message) => {
                 let network = unwrap_result!(network.lock());
 
-                let new_msg = unwrap_result!(msg_handler.lock()).getNewMsg(message);
-                let msg = Message::new(my_id, new_msg);
+                let msg = Message::new(my_id, message);
                 let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
 
                 match network.get_peer_id(peer_index) {
@@ -269,11 +257,8 @@ fn main() {
             }
             UserCommand::SendAll(message) => {
                 let mut network = unwrap_result!(network.lock());
-                //let msg = message.into_bytes();
-                //
                 let msg = Message::new(my_id, message);
                 let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
-                //
                 for (_, peer_id) in network.nodes.iter_mut() {
                     unwrap_result!(unwrap_result!(service.lock()).send(peer_id, bytes.clone()));
                 }
@@ -284,7 +269,6 @@ fn main() {
             }
             UserCommand::Broadcast(message) => {
                 let mut network = unwrap_result!(network.lock());
-                //let s = unwrap_result!(msg_handler.lock()).get_seq_num().to_string() + " " + message.as_str();
                 let mut msg = Message::new_with_kind(Kind::Broadcast, my_id, message);
                 msg.set_seq_num(unwrap_result!(msg_handler.lock()).get_seq_num());
                 let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
@@ -292,6 +276,7 @@ fn main() {
                 for (_, peer_id) in network.nodes.iter_mut() {
                     unwrap_result!(unwrap_result!(service.lock()).send(peer_id, bytes.clone()));
                 }
+                unwrap_result!(msg_handler.lock()).inc_seq();
             }
             UserCommand::Test => {
                 println!("my id is: {}", unwrap_result!(service.lock()).id());

@@ -2,21 +2,14 @@ use crust::PeerId;
 use std::collections::HashMap;
 
 pub struct MsgPasser {
-    //receivedMsgs: String,
-    receivedBytes: usize,
-    //peerId: PeerId,
-    seqNum: u32,
+    seq_num: u32,
     pub nodes: HashMap<PeerId, u32>,
 }
 
 impl MsgPasser {
     pub fn new() -> MsgPasser {
         MsgPasser {
-            //nodes: HashMap::new(),
-            //receivedMsgs: "",
-            receivedBytes: 0,
-            //peerId: null,
-            seqNum: 0,
+            seq_num: 0,
             nodes: HashMap::new(),
         }
     }
@@ -25,36 +18,36 @@ impl MsgPasser {
         return self.receivedMsgs;
     }*/
     pub fn get_seq_num(&self) -> u32 {
-        self.seqNum
+        self.seq_num
     }
 
-    pub fn nextSeqNum(&mut self) -> u32 {
-        self.seqNum += 1;
-        self.seqNum
+    pub fn next_seq_num(&mut self) -> u32 {
+        self.seq_num += 1;
+        self.seq_num
     }
 
-    pub fn getNewMsg(&mut self, msg: String) -> String {
-        let newStr = self.seqNum.to_string() + " " + msg.as_str();
-        self.incSeq();
-        return newStr;
+    pub fn get_new_msg(&mut self, msg: String) -> String {
+        let new_str = self.seq_num.to_string() + " " + msg.as_str();
+        self.inc_seq();
+        return new_str;
     }
 
-    pub fn incSeq(&mut self) {
-        self.seqNum += 1;
+    pub fn inc_seq(&mut self) {
+        self.seq_num += 1;
     }
 
     //pub fn handleBroadcast(&mut self, msg: String, id: &PeerId) -> bool {
-    pub fn handleBroadcast(&mut self, msgSeq: u32) -> bool {
-        if msgSeq < self.seqNum {
+    pub fn handle_broadcast(&mut self, msg_seq: u32) -> bool {
+        if msg_seq < self.seq_num {
             return false;
         } else {
-            self.incSeq();
+            self.inc_seq();
             return true;
         }
     }
 
-    pub fn trimMsg(msg: &String) -> Vec<&str> {
-        let mut msgs = msg.trim_right_matches(|c| c == '\r' || c == '\n')
+    pub fn trim_msg(msg: &String) -> Vec<&str> {
+        let msgs = msg.trim_right_matches(|c| c == '\r' || c == '\n')
         .split(' ')
         .collect::<Vec<_>>();
         msgs

@@ -1,5 +1,4 @@
 use crust::PeerId;
-use std::collections::HashMap;
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Message {
