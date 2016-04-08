@@ -41,11 +41,11 @@ fn main() {
     //println!("A: {}", decoded.id);
     //println!("their_info {:?}", their_info);
     let msg = "1 2 3 4 5 6";
-    let msgs: Vec<_> = msg.trim_right_matches(|c| c == '\r' || c == '\n')
-        .split(' ')
-        .collect::<Vec<_>>().drain(2..).collect();
+    //let msgs: Vec<_> = msg.trim_right_matches(|c| c == '\r' || c == '\n')
+    //    .split(' ')
+    //    .collect::<Vec<_>>().drain(2..).collect();
 
-    println!("{}", msgs.into_string());
+    //println!("{}", msgs.into_string());
 
     //let mut m: Vec<_> = msgs.drain(2..).collect();
     //println!("{:?}", m);
