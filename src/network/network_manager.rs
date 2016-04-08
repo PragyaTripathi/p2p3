@@ -6,6 +6,7 @@ use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 
+/*
 struct Guid {
     lowBits: i64,
     higtBits: i64,
@@ -14,7 +15,7 @@ struct Guid {
 struct Data {
     // TODO: TBD
     uri: String,
-}
+}*/
 
 /*
 put(GUID, data)
@@ -24,6 +25,7 @@ remove(GUID)
 value = get(GUID)
     Retrieves the data associated with GUID from one of the nodes responsible for it.
 */
+/*
 trait Pastry {
     fn put(id: Guid, data: Data) {
         // TODO:
@@ -38,7 +40,7 @@ trait Pastry {
         res
         // TODO:
     }
-}
+}*/
 
 // Make it pub for test
 pub struct Network {
@@ -50,6 +52,8 @@ pub struct Network {
     pub received_bytes: usize,
     pub peer_index: usize,
     pub connection_info_index: u32,
+
+    pub seqNum: u32,
 }
 
 // simple "routing table" without any structure
@@ -64,6 +68,7 @@ impl Network {
             received_bytes: 0,
             peer_index: 0,
             connection_info_index: 0,
+            seqNum: 0,
         }
     }
 
@@ -136,6 +141,8 @@ impl Network {
             self.received_bytes = 0;
         }
     }
+
+
 }
 
 pub fn handle_new_peer(service: &Service, protected_network: Arc<Mutex<Network>>, peer_id: PeerId) -> usize {

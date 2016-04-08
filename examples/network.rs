@@ -9,25 +9,31 @@ extern crate maidsafe_utilities; // macro unwrap!()
 //
 extern crate crust;
 extern crate p2p3;
+// For broadcast
+extern crate service_discovery;
+extern crate bincode;
 
 use rustc_serialize::{Decodable, Decoder, json};
+
 use docopt::Docopt;
 use std::io;
 //
 use std::sync::mpsc::channel;
-use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
-            SocketAddr, OurConnectionInfo,
-            PeerId};
+use crust::{Service, ConnectionInfoResult, PeerId};
 use std::sync::{Arc, Mutex};
 use p2p3::network::network_manager::Network;
 use p2p3::network::network_manager::handle_new_peer;
 use p2p3::network::cmd_parser;
 use p2p3::network::cmd_parser::UserCommand;
 use p2p3::network::cmd_parser::parse_user_command;
+use p2p3::network::message::{Message, Kind};
+use p2p3::network::msg_passer::MsgPasser;
 use std::thread;
 use std::str::FromStr;
-
-
+// For broadcast
+use service_discovery::ServiceDiscovery;
+use std::iter;
+use bincode::rustc_serialize::{encode, decode}; // Use for encode and decode
 
 
 fn main() {
@@ -36,19 +42,25 @@ fn main() {
     let (channel_sender, channel_receiver) = channel();
     let (category_tx, category_rx) = channel();
 
-    let (bs_sender, bs_receiver) = channel();
+//    let (bs_sender, bs_receiver) = channel();
     let crust_event_category =
         ::maidsafe_utilities::event_sender::MaidSafeEventCategory::Crust;
     let event_sender =
         ::maidsafe_utilities::event_sender::MaidSafeObserver::new(channel_sender,
                                                                   crust_event_category,
                                                                   category_tx);
-    let mut config = unwrap_result!(::crust::read_config_file());
 
+    /* If this file name is "file_name.rs",
+     * it will read the config file named "file_name.crust.config".
+     */
+    let mut config = unwrap_result!(::crust::read_config_file()); // ".crust.config"
 
     let mut service = unwrap_result!(Service::with_config(event_sender, &config));
     unwrap_result!(service.start_listening_tcp());
     unwrap_result!(service.start_listening_utp());
+    let my_id = service.id();
+
+    // Enable listening and responding to peers searching for us.
     service.start_service_discovery();
 
     let service = Arc::new(Mutex::new(service));
@@ -57,8 +69,12 @@ fn main() {
     let network = Arc::new(Mutex::new(Network::new()));
     let network2 = network.clone();
 
-    // Start event-handling thread
+    let msg_handler = Arc::new(Mutex::new(MsgPasser::new()));
+    let msg_handler2 = msg_handler.clone();
 
+    /* Start event-handling thread.
+     * This thread handles the peer events.
+     */
     let handler = match thread::Builder::new().name("CrustNode event handler".to_string())
                                               .spawn(move || {
         let service = service_cloned;
@@ -67,16 +83,42 @@ fn main() {
                 ::maidsafe_utilities::event_sender::MaidSafeEventCategory::Crust => {
                     if let Ok(event) = channel_receiver.try_recv() {
                         match event {
+                            // Invoked when a new message is received. Passes the message.
                             crust::Event::NewMessage(peer_id, bytes) => {
                                 let message_length = bytes.len();
                                 let mut network = unwrap_result!(network2.lock());
                                 network.record_received(message_length);
-                                println!("\nReceived from {:?} message: {}",
-                                         peer_id,
-                                         String::from_utf8(bytes)
-                                         .unwrap_or(format!("non-UTF-8 message of {} bytes",
-                                                            message_length)));
+
+                                let decoded_msg: Message = decode(&bytes[..]).unwrap();
+                                let msg = decoded_msg.get_msg();
+
+                                let msg_clone = msg.clone();
+
+                                /*
+                                 * Handle brocast message
+                                 */
+                                match decoded_msg.get_kind() {
+                                    Kind::Broadcast => {
+                                        if decoded_msg.get_src() != my_id &&
+                                            unwrap_result!(msg_handler2.lock()).handleBroadcast(decoded_msg.get_seq_num()) {
+                                            println!("\nReceived from {:?} message: {:?}",
+                                                     peer_id, msg);
+
+                                            for (_, peer_id) in network.nodes.iter_mut() {
+                                                unwrap_result!(unwrap_result!(service.lock()).send(peer_id, bytes.clone()));
+                                            }
+
+
+                                        }
+                                    }
+
+                                    Kind::Nomal => {
+                                        println!("\nReceived from {:?} message: {:?}",
+                                                 peer_id, msg);
+                                    }
+                                }
                             },
+                            // Invoked as a result to the call of Service::prepare_contact_info.
                             crust::Event::ConnectionInfoPrepared(result) => {
                                 let ConnectionInfoResult {
                                     result_token, result } = result;
@@ -97,20 +139,24 @@ fn main() {
                                     panic!("Got the same result_token twice!");
                                 };
                             },
+                            // Invoked when we get a bootstrap connection to a new peer.
                             crust::Event::BootstrapConnect(peer_id) => {
                                 println!("\nBootstrapConnect with peer {:?}", peer_id);
                                 let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
-                                let _ = bs_sender.send(peer_index);
+                                //let _ = bs_sender.send(peer_index);
                             },
+                            // Invoked when a bootstrap peer connects to us.
                             crust::Event::BootstrapAccept(peer_id) => {
                                 println!("\nBootstrapAccept with peer {:?}", peer_id);
                                 let peer_index = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
-                                let _ = bs_sender.send(peer_index);
+                                //let _ = bs_sender.send(peer_index);
                             },
+                            // Invoked when a connection to a new peer is established.
                             crust::Event::NewPeer(Ok(()), peer_id) => {
                                 println!("\nConnected to peer {:?}", peer_id);
                                 let _ = handle_new_peer(&unwrap_result!(service.lock()), network2.clone(), peer_id);
                             }
+                            // Invoked when a peer is lost.
                             crust::Event::LostPeer(peer_id) => {
                                 println!("\nLost connection to peer {:?}",
                                          peer_id);
@@ -150,86 +196,115 @@ fn main() {
         },
     };
 
+    // print the usage
+    cmd_parser::print_usage();
+//    println!("Debug string: 123");
 
-        cmd_parser::print_usage();
+    /*
+     * Main thread handles the user input command line.
+     */
+    loop {
+        use std::io::Write; // For flush().
 
-        loop {
-            use std::io::Write; // For flush().
+        print!("> ");
+        assert!(io::stdout().flush().is_ok());
 
-            print!("> ");
-            assert!(io::stdout().flush().is_ok());
+        // Get the command line from user input
+        let mut command = String::new();
+        assert!(io::stdin().read_line(&mut command).is_ok());
 
-            let mut command = String::new();
-            assert!(io::stdin().read_line(&mut command).is_ok());
 
-            let cmd = match parse_user_command(command) {
-                Some(cmd) => cmd,
-                None => continue,
-            };
+        let cmd = match parse_user_command(command) {
+            Some(cmd) => cmd,
+            None => continue,
+        };
 
-            match cmd {
-                UserCommand::PrepareConnectionInfo => {
-                    let mut network = unwrap_result!(network.lock());
-                    let token = network.next_connection_info_index();
-                    unwrap_result!(service.lock()).prepare_connection_info(token);
-                }
-                UserCommand::Connect(our_info_index, their_info) => {
-                    let mut network = unwrap_result!(network.lock());
-                    let our_info_index = match u32::from_str(&our_info_index) {
-                        Ok(info) => info,
-                        Err(e) => {
-                            println!("Invalid connection info index: {}", e);
-                            continue;
-                        },
-                    };
-                    let our_info = match network.our_connection_infos.remove(&our_info_index) {
-                        Some(info) => info,
-                        None => {
-                            println!("Invalid connection info index");
-                            continue;
-                        },
-                    };
-                    let their_info = match json::decode(&their_info) {
-                        Ok(info) => info,
-                        Err(e) => {
-                            println!("Error decoding their connection info");
-                            println!("{}", e);
-                            continue;
-                        },
-                    };
-                    unwrap_result!(service.lock()).connect(our_info, their_info);
-                }
-                UserCommand::Send(peer_index, message) => {
-                    let network = unwrap_result!(network.lock());
-                    match network.get_peer_id(peer_index) {
-                        Some(ref mut peer_id) => {
-                            unwrap_result!(unwrap_result!(service.lock()).send(peer_id, message.into_bytes()));
-                        }
-                        None => println!("Invalid connection #"),
+        match cmd {
+            UserCommand::PrepareConnectionInfo => {
+                let mut network = unwrap_result!(network.lock());
+                let token = network.next_connection_info_index();
+                unwrap_result!(service.lock()).prepare_connection_info(token);
+            }
+            UserCommand::Connect(our_info_index, their_info) => {
+                let mut network = unwrap_result!(network.lock());
+                let our_info_index = match u32::from_str(&our_info_index) {
+                    Ok(info) => info,
+                    Err(e) => {
+                        println!("Invalid connection info index: {}", e);
+                        continue;
+                    },
+                };
+                let our_info = match network.our_connection_infos.remove(&our_info_index) {
+                    Some(info) => info,
+                    None => {
+                        println!("Invalid connection info index");
+                        continue;
+                    },
+                };
+                let their_info = match json::decode(&their_info) {
+                    Ok(info) => info,
+                    Err(e) => {
+                        println!("Error decoding their connection info");
+                        println!("{}", e);
+                        continue;
+                    },
+                };
+                unwrap_result!(service.lock()).connect(our_info, their_info);
+            }
+            UserCommand::Send(peer_index, message) => {
+                let mut network = unwrap_result!(network.lock());
+
+                let new_msg = unwrap_result!(msg_handler.lock()).getNewMsg(message);
+                let msg = Message::new(my_id, new_msg);
+                let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
+
+                match network.get_peer_id(peer_index) {
+                    Some(ref mut peer_id) => {
+                        unwrap_result!(unwrap_result!(service.lock()).send(peer_id, bytes));
                     }
-                }
-                UserCommand::SendAll(message) => {
-                    let mut network = unwrap_result!(network.lock());
-                    let msg = message.into_bytes();
-                    for (_, peer_id) in network.nodes.iter_mut() {
-                        unwrap_result!(unwrap_result!(service.lock()).send(peer_id, msg.clone()));
-                    }
-                }
-                UserCommand::List => {
-                    let network = unwrap_result!(network.lock());
-                    network.print_connected_nodes(&unwrap_result!(service.lock()));
-                }
-                /*
-                UserCommand::Clean => {
-                    let mut network = network.lock().unwrap();
-                    network.remove_disconnected_nodes();
-                    network.print_connected_nodes();
-                }
-                */
-                UserCommand::Stop => {
-                    break;
+                    None => println!("Invalid connection #"),
                 }
             }
+            UserCommand::SendAll(message) => {
+                let mut network = unwrap_result!(network.lock());
+                //let msg = message.into_bytes();
+                //
+                let msg = Message::new(my_id, message);
+                let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
+                //
+                for (_, peer_id) in network.nodes.iter_mut() {
+                    unwrap_result!(unwrap_result!(service.lock()).send(peer_id, bytes.clone()));
+                }
+            }
+            UserCommand::List => {
+                let network = unwrap_result!(network.lock());
+                network.print_connected_nodes(&unwrap_result!(service.lock()));
+            }
+            UserCommand::Broadcast(message) => {
+                let mut network = unwrap_result!(network.lock());
+                //let s = unwrap_result!(msg_handler.lock()).get_seq_num().to_string() + " " + message.as_str();
+                let mut msg = Message::new_with_kind(Kind::Broadcast, my_id, message);
+                msg.set_seq_num(unwrap_result!(msg_handler.lock()).get_seq_num());
+                let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
+
+                for (_, peer_id) in network.nodes.iter_mut() {
+                    unwrap_result!(unwrap_result!(service.lock()).send(peer_id, bytes.clone()));
+                }
+            }
+            UserCommand::Test => {
+                println!("my id is: {}", unwrap_result!(service.lock()).id());
+            }
+            /*
+            UserCommand::Clean => {
+                let mut network = network.lock().unwrap();
+                network.remove_disconnected_nodes();
+                network.print_connected_nodes();
+            }
+            */
+            UserCommand::Stop => {
+                break;
+            }
+        }
 
     }
 

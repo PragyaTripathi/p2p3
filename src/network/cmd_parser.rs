@@ -1,6 +1,7 @@
 use rustc_serialize::{Decodable, Decoder, json};
 use docopt::Docopt;
 use std::io;
+use std::iter;
 
 static CLI_USAGE: &'static str = "
 Usage:
@@ -12,6 +13,8 @@ Usage:
   cli clean
   cli stop
   cli help
+  cli broadcast <message>...
+  cli test
 ";
 
 pub fn print_usage() {
@@ -24,6 +27,7 @@ pub fn print_usage() {
     list                                          - List existing connections and UDP sockets
     stop                                          - Exit the app
     help                                          - Print this help
+    broadcast
 # Where
     <our-file>      - The file where we'll read/write our connection info
     <their-file>    - The file where we'll read their connection info.
@@ -40,6 +44,8 @@ struct CliArgs {
     cmd_send: bool,
     cmd_send_all: bool,
     cmd_list: bool,
+    cmd_broadcast: bool,
+    cmd_test: bool,
     //cmd_clean: bool,
     cmd_stop: bool,
     cmd_help: bool,
@@ -57,6 +63,8 @@ pub enum UserCommand {
     Send(usize, String),
     SendAll(String),
     List,
+    Broadcast(String),
+    Test
     //Clean,
 }
 
@@ -99,9 +107,17 @@ pub fn parse_user_command(cmd: String) -> Option<UserCommand> {
         Some(UserCommand::Clean)
     } */ else if args.cmd_stop {
         Some(UserCommand::Stop)
+    }   // For brocast
+    else if args.cmd_broadcast {
+        let msg = args.arg_message.join(" ");
+        //let mStr = msg.to_string();
+        //let s: String = msg.iter().cloned().collect();        //let newMsg = "broadcast ".to_string() + mStr;
+        Some(UserCommand::Broadcast(msg))
     } else if args.cmd_help {
         print_usage();
         None
+    } else if args.cmd_test {
+        Some(UserCommand::Test)
     } else {
         None
     }
