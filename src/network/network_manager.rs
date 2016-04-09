@@ -1,4 +1,6 @@
+#![allow(warnings)]
 //use std;
+
 use std::collections::{BTreeMap, HashMap};
 use crust::{Service, OurConnectionInfo, PeerId};
 //use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
