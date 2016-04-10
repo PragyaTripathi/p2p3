@@ -6,29 +6,39 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::error::Error;
+use std::path::PathBuf;
+use std::path::Path;
+
+fn make_temp_dir() -> PathBuf {
+    let mut temp_dir_name = env::temp_dir();
+    temp_dir_name.push("P2P3");
+    fs::create_dir(temp_dir_name.as_path()).unwrap_or( () );
+    //Return
+    temp_dir_name
+}
+
+fn make_file(path: &Path, input: &str) -> Result<(), String>{
+    let mut file = File::create(&path).unwrap_or_else(|e| panic!("Oh noooooo {}", e));
+    match file.write_all(&input.as_bytes()){
+        Err(why)=>{
+            let display = path.display();
+            return Err(format!("couldn't write to {}: {}", display,
+                                               Error::description(&why)));
+        },
+        Ok(_)=>Ok( () )
+    }
+}
 
 #[allow(dead_code)]
 pub fn run_c(input: &str) -> Result<String, String> {
-    let mut temp_dir_name = env::temp_dir();
-    temp_dir_name.push("P2P3");
-    let temp_dir_name = temp_dir_name.as_path();
-    fs::create_dir(temp_dir_name).unwrap_or( () );
+    let temp_dir_name = make_temp_dir();
     let c_file = temp_dir_name.join("temp_c_file.c");
     let exe = temp_dir_name.join("temp.exe");
 
-    {
-        let mut file = File::create(&c_file).unwrap_or_else(|e| panic!("Oh noooooo {}", e));
-        match file.write_all(&input.as_bytes()){
-            Err(why)=>{
-                let display = c_file.display();
-                return Err(format!("couldn't write to {}: {}", display,
-                                                   Error::description(&why)));
-            },
-            Ok(_)=>{
-                // File written, so proceed
-            }
-        };
-    }
+    match make_file(&c_file, &input){
+        Ok(_) =>{},
+        Err(e) => return Err(e)
+    };
 
     let output = match gcc::windows_registry::find("x86_64_msvc", "cl.exe"){
         Some(cc) => {
@@ -54,9 +64,32 @@ pub fn run_c(input: &str) -> Result<String, String> {
         return Err(format!("Run failed with code {}: {}", a, b));
     }
 
-
-
     Ok(String::from_utf8(run_output.stdout).unwrap())
+}
+
+#[allow(dead_code)]
+pub fn run_python(input: &str) -> Result<String, String> {
+    let temp_dir = make_temp_dir();
+    let py_file = temp_dir.join("temp_py.c");
+
+    match make_file(&py_file, &input){
+        Ok(_) =>{},
+        Err(e) => return Err(e)
+    };
+
+    match Command::new("python").current_dir(temp_dir).arg(&py_file).output(){
+        Ok(out) => {
+            if out.status.success() {
+                Ok(String::from_utf8(out.stdout).unwrap())
+            }else{
+                let a = out.status.code().unwrap();
+                let b = String::from_utf8(out.stderr).unwrap();
+                let c = String::from_utf8(out.stdout).unwrap();
+                Err(format!("Python failed with code {}: {} {}", a, b, c))
+            }
+        },
+        Err(err) => Err(format!("Failed to run python with error: {}",err))
+    }
 }
 
 #[cfg(test)]
@@ -71,6 +104,11 @@ void main(){
     return 0;
 }";
 
+    static PY_CODE: &'static str =
+"
+print \"Hello World\",
+";
+
     #[test]
     fn run_simple_c(){
         let out = run_c(C_CODE);
@@ -80,6 +118,19 @@ void main(){
             Err(_) => { assert!(false) },
             Ok(res) => {
                 assert_eq!(res, "Hello World");
+            }
+        }
+    }
+
+    #[test]
+    fn run_simple_py(){
+        let out = run_python(PY_CODE);
+
+        print!("{:?}", out);
+        match out{
+            Err(_) => { assert!(false) },
+            Ok(res) => {
+                assert_eq!(res.trim_right(), "Hello World");
             }
         }
     }
