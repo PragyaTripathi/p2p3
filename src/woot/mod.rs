@@ -297,11 +297,13 @@ impl Site {
         Site {site_id: id, logical_clock: Clock::new(), sequence: Sequence::new(), pool: Vec::default()}
     }
 
-    pub fn parse_given_file(&mut self) {
-
+    pub fn parse_given_string(&mut self, file_contents: &str) {
+        for (i, c) in file_contents.chars().enumerate() {
+            self.generate_insert(i, c, false);
+        }
     }
 
-    pub fn generate_insert(&mut self, pos: usize, alpha: char) {
+    pub fn generate_insert(&mut self, pos: usize, alpha: char, broadcast: bool) {
         self.logical_clock.increment();
         let prev_wchar_id = match self.sequence.ith_visible(pos) {
             Some(wchar) => wchar.clone().id,
@@ -314,7 +316,9 @@ impl Site {
         let new_wchar = WootChar::new(create_char_id(self.site_id, self.logical_clock.value.get()), alpha, prev_wchar_id, next_wchar_id);
         let cloned_wchar = new_wchar.clone();
         self.sequence.integrate_ins(new_wchar, cloned_wchar.prev_id, cloned_wchar.next_id);
-        // broadcast
+        if broadcast {
+            // broadcast
+        }
     }
 
     pub fn generate_del(&mut self, pos: usize) {
@@ -374,4 +378,13 @@ impl Site {
             CharId::Regular {site_id, unique_id} => self.sequence.exists(id)
         }
     }
+}
+
+#[test]
+fn test_site() {
+    let mut site = Site::new(1);
+    let file_contents = "fn main() { \n println!(\"Hello, P2P3!\"); \n }";
+    site.parse_given_string(file_contents);
+    let value = site.sequence.value();
+    assert_eq!(value, file_contents);
 }
