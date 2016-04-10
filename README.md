@@ -23,5 +23,5 @@ If we all follow the above we should have a common set of tools to reason about 
 ## Run the UI ##
 * Install npm. The best way to install npm is to install node. Download the latest version from: https://nodejs.org/en/
 * Update npm ```sudo npm install npm -g```
-* Go to ../src/front-end and ```npm install```
-* Open ../src/front-end/index.html in browser.
+* Go to ../front-end and ```npm install```
+* Open ../front-end/index.html in browser.
