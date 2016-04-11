@@ -5,10 +5,7 @@ use super::sequence::Sequence;
 use super::operation::Operation;
 use super::woot_char::WootChar;
 use super::char_id::CharId;
-
-pub fn create_char_id(site_id: u32, unique_id: u32) -> CharId {
-    CharId::Regular {site_id: site_id, unique_id: unique_id}
-}
+use super::char_id::create_char_id;
 
 pub struct Site {
     site_id: u32,
@@ -34,11 +31,15 @@ impl Site {
 
     pub fn generate_insert(&mut self, pos: usize, alpha: char, broadcast: bool) {
         self.logical_clock.increment();
-        let prev_wchar_id = match self.sequence.ith_visible(pos) {
+        let mut position = pos;
+        if !(pos == 0 && pos == self.sequence.list.len()) {
+            position -= 1;
+        }
+        let prev_wchar_id = match self.sequence.ith_visible(position) {
             Some(wchar) => wchar.clone().id,
             None => CharId::Beginning
         };
-        let next_wchar_id  = match self.sequence.ith_visible(pos+1) {
+        let next_wchar_id  = match self.sequence.ith_visible(position+1) {
             Some(wchar) => wchar.clone().id,
             None => CharId::Ending
         };
@@ -74,11 +75,12 @@ impl Site {
                 let next_id = w_char.next_id.clone();
                 let id = w_char.id;
                 // Insert only if the id doesn't exist
-                if self.sequence.exists(&id) {
+                if !self.sequence.exists(&id) {
                     if self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id) {
                         self.sequence.integrate_ins(new_value, prev_id, next_id)
                     } else {
-                        self.pool.push(given_operation);
+                        self.pool.push(given_operation); // if the operation is not executable, push it back to queue
+                        // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
                     }
                 }
             },
@@ -89,7 +91,8 @@ impl Site {
                     if can_integrate {
                         self.sequence.integrate_del(&w_char);
                     } else {
-                        self.pool.push(given_operation);
+                        self.pool.push(given_operation); // if the operation is not executable, push it back to queue
+                        // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
                     }
                 }
             }
@@ -110,10 +113,49 @@ impl Site {
 }
 
 #[test]
+fn test_generate_insert() {
+    let mut site = Site::new(1);
+    site.generate_insert(0, 'H', false);
+    let val = "H";
+    assert_eq!(site.value(), val);
+}
+
+#[test]
+fn test_generate_del() {
+    let mut site = Site::new(1);
+    site.generate_insert(0, 'H', false);
+    site.generate_del(0);
+    assert_eq!(site.value(), "");
+}
+
+#[test]
+fn test_operation() {
+    let mut site = Site::new(1);
+    let mut site2 = Site::new(2);
+    let char_id_1 = create_char_id(1, 0);
+    let char_id_2 = create_char_id(2, 0);
+    let char_id_3 = create_char_id(1, 1);
+    let char_id_4 = create_char_id(1, 2);
+    let char_id_5 = create_char_id(2, 1);
+    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
+    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', CharId::Beginning, CharId::Ending); // From site 2
+    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_1.clone(), CharId::Ending); // From site 1
+    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending); // From site 1
+    let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', char_id_2.clone(), CharId::Ending); // From site 2
+    site.sequence.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
+    site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: 1});
+    assert_eq!(site2.value(), "a");
+    site2.implement_operation(Operation::Delete{w_char: wchar1.clone(), from_site: 1});
+    assert_eq!(site2.value(), "");
+    site2.implement_operation(Operation::Delete{w_char: wchar5.clone(), from_site: 1});
+    assert_eq!(site2.pool.len(), 0);
+}
+
+#[test]
 fn test_site() {
     let mut site = Site::new(1);
     let file_contents = "fn main() { \n println!(\"Hello, P2P3!\"); \n }";
     site.parse_given_string(file_contents);
-    let value = site.sequence.value();
+    let value = site.value();
     assert_eq!(value, file_contents);
 }
