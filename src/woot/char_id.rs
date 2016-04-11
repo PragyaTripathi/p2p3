@@ -2,7 +2,7 @@
 
 use std::cmp::Ordering;
 
-#[derive(Clone,PartialEq,Debug)]
+#[derive(Clone,PartialEq,Debug,RustcDecodable, RustcEncodable)]
 pub enum CharId {
     Beginning,
     Ending,

@@ -2,7 +2,7 @@
 
 use super::char_id::CharId;
 
-#[derive(Clone,PartialEq,Debug)]
+#[derive(Clone,PartialEq,Debug,RustcDecodable,RustcEncodable)]
 pub struct WootChar {
     pub id: CharId,
     pub visible: bool,

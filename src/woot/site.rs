@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+extern crate rustc_serialize;
+use rustc_serialize::json;
 use super::clock::Clock;
 use super::sequence::Sequence;
 use super::operation::Operation;
@@ -45,9 +47,9 @@ impl Site {
         };
         let new_wchar = WootChar::new(create_char_id(self.site_id, self.logical_clock.value.get()), alpha, prev_wchar_id, next_wchar_id);
         let cloned_wchar = new_wchar.clone();
-        self.sequence.integrate_ins(new_wchar, cloned_wchar.prev_id, cloned_wchar.next_id);
+        self.sequence.integrate_ins(new_wchar, cloned_wchar.prev_id.clone(), cloned_wchar.next_id.clone());
         if broadcast {
-            // broadcast
+            self.broadcast(Operation::Insert { w_char: cloned_wchar, from_site: self.site_id })
         }
     }
 
@@ -62,7 +64,7 @@ impl Site {
         };
         if value_present {
             self.sequence.integrate_del(&new_wchar);
-            //broadcast
+            self.broadcast(Operation::Delete{ w_char: new_wchar.clone(), from_site: self.site_id })
         }
     }
 
@@ -99,8 +101,16 @@ impl Site {
         }
     }
 
-    fn reception(&mut self, operation: Operation) {
-        self.pool.push(operation);
+    fn broadcast(&self, operation: Operation) {
+        // Serialize
+        let encoded = json::encode(&operation).unwrap();
+        // Call network manager to broadcast
+    }
+
+    fn reception(&mut self, encoded: String) {
+        // Deserialize
+        let decoded: Operation = json::decode(&encoded).unwrap();
+        self.pool.push(decoded);
     }
 
     fn can_integrate_id(&self, id: &CharId) -> bool {
