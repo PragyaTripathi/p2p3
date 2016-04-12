@@ -67,16 +67,14 @@ fn main() {
         return;
     };
     let file_path = "permissions.txt";
-    let mut git_access = GitAccess::new(git_url, local_path, git_username, git_password);
+    let mut git_access = GitAccess::new(git_url.clone(), local_path.clone(), git_username.clone(), git_password.clone());
     let mut site = Site::new(site_id);
-    /*
-    match git_access.clone_repo(local_path) {
+    match git_access.clone_repo(&local_path) {
         Ok(()) => {},
         Err(e) => {
             println!("The folder already exits");
         },
     };
-    */
     let permission_level = get_permission_level(&git_access);
     match permission_level {
         PermissionLevel::Editor => println!("The user is an editor"),
