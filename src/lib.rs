@@ -6,6 +6,7 @@ extern crate maidsafe_utilities;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate rand;
+extern crate ws;
 
 mod commit;
 mod compile;
