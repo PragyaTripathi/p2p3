@@ -14,5 +14,5 @@ mod logger;
 pub mod network;
 mod permission;
 pub mod storage;
-mod ui;
+pub mod ui;
 mod woot;

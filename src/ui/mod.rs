@@ -1,8 +1,10 @@
 use rustc_serialize::json;
 use std::thread;
 use ws::{listen, Handler, Sender, Result, Message, Handshake, CloseCode, Error};
+use ws::util::Token;
 use std::result::Result as Res;
 use std::sync::mpsc::channel;
+use std::sync::mpsc;
 use std::sync::{Arc,Mutex};
 
 
@@ -13,17 +15,26 @@ pub enum Command{
     Commit,
 }
 
-type FnCommand = Box<Fn(&Command)->Res<String, String> + Send + Sync>;
+pub type FnCommand = Box<Fn(&Command)->Res<String, String> + Send + Sync>;
 
 #[allow(dead_code)]
 #[derive(Clone)]
-struct UiHandler{
+pub struct UiHandler{
+    tx: mpsc::Sender<Command>,
     listeners: Arc<Mutex<Vec<FnCommand>>>,
-    out: Arc<Sender>
 }
 
-impl Handler for UiHandler {
+pub struct UiInner{
+    rx: mpsc::Receiver<Command>,
+    out: Sender,
+    share: UiHandler
+}
+
+
+
+impl Handler for UiInner {
     fn on_open(&mut self, _: Handshake) -> Result<()> {
+        self.out.timeout(50, Token(0));
         Ok(())
     }
 
@@ -31,7 +42,7 @@ impl Handler for UiHandler {
         match msg {
             Message::Text(txt) => {
                 let cmd: Command = json::decode(&txt).unwrap();
-                for listener in self.listeners.lock().unwrap().iter() {
+                for listener in self.share.listeners.lock().unwrap().iter() {
                     let res = listener(&cmd);
                     match res{
                         Ok(_)=> {},
@@ -57,19 +68,35 @@ impl Handler for UiHandler {
     fn on_error(&mut self, err: Error) {
         println!("The server encountered an error: {:?}", err);
     }
+
+    fn on_timeout(&mut self, event: Token) -> Result<()> {
+        loop{
+            match self.rx.try_recv() {
+                Ok(cmd) => {self.out.send(Message::Text(json::encode(&cmd).unwrap())).unwrap();}
+                Err(_) => {break;}
+            }
+        }
+        self.out.timeout(50, Token(0));
+        Ok(())
+    }
 }
 
 impl UiHandler{
     #[allow(dead_code)]
-    fn new(port: u16) -> UiHandler{
-        let (tx,rx) = channel::<UiHandler>();
+    pub fn new(port: u16) -> UiHandler {
+        let (tx,rx) = channel();
+        println!("listening on 127.0.0.1:{}",port);
         thread::spawn(move||{
             listen(format!("127.0.0.1:{}",port).as_str(),
                  |out|{
-                     let ui = UiHandler {
-                         out: Arc::new(out),
-                         listeners: Arc::new(Mutex::new(vec!()))};
-                     tx.send(ui.clone()).unwrap_or(());
+                     let (cmdtx, cmdrx) = channel::<Command>();
+                     let ui = UiInner {
+                         out: out,
+                         rx: cmdrx,
+                         share: UiHandler{
+                             listeners: Arc::new(Mutex::new(vec!())),
+                             tx: cmdtx.clone() } };
+                     tx.send(ui.share.clone()).unwrap();
                      ui
                  }).unwrap();
         });
@@ -77,12 +104,12 @@ impl UiHandler{
     }
 
     #[allow(dead_code)]
-    fn add_listener(&self, f: FnCommand){
+    pub fn add_listener(&self, f: FnCommand){
         self.listeners.lock().unwrap().push(f);
     }
 
     #[allow(dead_code)]
-    fn send_command(&self, cmd: Command){
-        self.out.send(Message::Text(json::encode(&cmd).unwrap())).unwrap();
+    pub fn send_command(&self, cmd: Command){
+        self.tx.send(cmd).unwrap();
     }
 }
