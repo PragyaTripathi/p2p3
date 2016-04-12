@@ -11,13 +11,14 @@ use std::path::Path;
 #[derive(Clone,PartialEq,Debug)]
 pub struct GitAccess {
     repo_url: String,
+    local_url: String,
     username: String,
     password: String,
 }
 
 impl GitAccess {
-    pub fn new(repo: String, usern: String, passwd: String) -> GitAccess {
-        GitAccess{repo_url: repo, username: usern, password: passwd}
+    pub fn new(repo: String, local_path: String, usern: String, passwd: String) -> GitAccess {
+        GitAccess{repo_url: repo, local_url: local_path, username: usern, password: passwd}
     }
 
     pub fn clone_repo(&self, dst_dir: &str) -> Result<(), git2::Error> {
@@ -29,7 +30,7 @@ impl GitAccess {
     }
 
     pub fn commit_path(&self, commit_message: &str, file_path: &str) -> Result<(), Error>  {
-        let repo = match Repository::open(&self.repo_url) {
+        let repo = match Repository::open(Path::new(&self.local_url)) {
             Ok(repo) => repo,
             Err(e) =>return Err(e)
         };
@@ -53,8 +54,8 @@ impl GitAccess {
         Ok(())
     }
 
-    pub fn push(&self, dest_dir: &str) -> Result<(), git2::Error> {
-        let repo = match Repository::open(Path::new(dest_dir)) {
+    pub fn push(&self) -> Result<(), git2::Error> {
+        let repo = match Repository::open(Path::new(&self.local_url)) {
             Ok(repo) => repo,
             Err(e) => return Err(e)
         };

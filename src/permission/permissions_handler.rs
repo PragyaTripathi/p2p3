@@ -7,8 +7,8 @@ pub enum PermissionLevel {
     Viewer
 }
 
-pub fn get_permission_level(ga: &GitAccess, dest_dir: &str) -> PermissionLevel {
-    return match ga.push(dest_dir) {
+pub fn get_permission_level(ga: &GitAccess) -> PermissionLevel {
+    return match ga.push() {
         Ok(()) => PermissionLevel::Editor,
         Err(_) => PermissionLevel::Viewer,
     };

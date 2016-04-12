@@ -61,21 +61,23 @@ fn main() {
     let git_password = matches.opt_str("p").unwrap();
     let site_id_str = matches.opt_str("s").unwrap();
     let site_id = site_id_str.parse::<u32>().unwrap();
-    let file_path = matches.opt_str("f").unwrap();
+    let local_path = matches.opt_str("f").unwrap();
     if matches.free.len() > 0 {
         print_usage(&program, opts);
         return;
     };
     let file_path = "permissions.txt";
-    let mut git_access = GitAccess::new(git_url, git_username, git_password);
+    let mut git_access = GitAccess::new(git_url, local_path, git_username, git_password);
     let mut site = Site::new(site_id);
-    match git_access.clone_repo(file_path) {
+    /*
+    match git_access.clone_repo(local_path) {
         Ok(()) => {},
         Err(e) => {
             println!("The folder already exits");
         },
     };
-    let permission_level = get_permission_level(&git_access, file_path.clone());
+    */
+    let permission_level = get_permission_level(&git_access);
     match permission_level {
         PermissionLevel::Editor => println!("The user is an editor"),
         PermissionLevel::Viewer => println!("The user is a viewer"),
