@@ -9,11 +9,12 @@ use super::woot_char::WootChar;
 use super::char_id::CharId;
 use super::char_id::create_char_id;
 
+#[derive(Clone)]
 pub struct Site {
     site_id: u32,
     logical_clock: Clock,
     sequence: Sequence,
-    pool: Vec<Operation>
+    pool: Vec<Operation>,
 }
 
 impl Site {
