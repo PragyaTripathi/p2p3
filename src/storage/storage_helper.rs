@@ -10,18 +10,18 @@ use std::path::Path;
 
 #[derive(Clone,PartialEq,Debug)]
 pub struct GitAccess {
-    repo_url: &'static str,
-    username: &'static str,
-    password: &'static str,
+    repo_url: String,
+    username: String,
+    password: String,
 }
 
 impl GitAccess {
-    pub fn new(repo: &'static str, usern: &'static str, passwd: &'static str) -> GitAccess {
+    pub fn new(repo: String, usern: String, passwd: String) -> GitAccess {
         GitAccess{repo_url: repo, username: usern, password: passwd}
     }
 
-    pub fn clone(&self, dst_dir: &str) -> Result<(), git2::Error> {
-        match Repository::clone(self.repo_url, dst_dir) {
+    pub fn clone_repo(&self, dst_dir: &str) -> Result<(), git2::Error> {
+        match Repository::clone(&self.repo_url, dst_dir) {
             Ok(repo) => repo,
             Err(e) => return Err(e)
         };
@@ -29,7 +29,7 @@ impl GitAccess {
     }
 
     pub fn commit_path(&self, commit_message: &str, file_path: &str) -> Result<(), Error>  {
-        let repo = match Repository::open(self.repo_url) {
+        let repo = match Repository::open(&self.repo_url) {
             Ok(repo) => repo,
             Err(e) =>return Err(e)
         };
@@ -53,8 +53,8 @@ impl GitAccess {
         Ok(())
     }
 
-    pub fn push(&self) -> Result<(), git2::Error> {
-        let repo = match Repository::open(self.repo_url) {
+    pub fn push(&self, dest_dir: &str) -> Result<(), git2::Error> {
+        let repo = match Repository::open(Path::new(dest_dir)) {
             Ok(repo) => repo,
             Err(e) => return Err(e)
         };
@@ -62,7 +62,7 @@ impl GitAccess {
         let mut cb = RemoteCallbacks::new();
         cb.credentials(|_, _, _| {  // |repoName, options, cred_type|
             // get credentials from user
-            Cred::userpass_plaintext(self.username, self.password)
+            Cred::userpass_plaintext(&self.username, &self.password)
         });
         let remote = "origin";
         let mut remote = try!(repo.find_remote(remote));
