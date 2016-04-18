@@ -1,12 +1,41 @@
 use rustc_serialize::json;
-use std::thread;
-use ws::{listen, Handler, Sender, Result, Message, Handshake, CloseCode, Error};
-use ws::util::Token;
+use std::io::Result as IoRes;
+use std::process::{Child, Stdio};
 use std::result::Result as Res;
 use std::sync::mpsc::channel;
 use std::sync::mpsc;
 use std::sync::{Arc,Mutex};
+use std::thread;
+use url::Url;
+use ws::{listen, Handler, Sender, Result, Message, Handshake, CloseCode, Error};
+use ws::util::Token;
 
+pub fn open_url(url: &str) -> IoRes<Child> {
+    let (browser, args) = if cfg!(target_os = "linux") {
+        ("xdg-open", vec![])
+    } else if cfg!(target_os = "macos") {
+        ("open", vec!["-g"])
+    } else if cfg!(target_os = "windows") {
+        // `start` requires an empty string as its first parameter.
+        ("cmd", vec!["/c","start"])
+    } else {
+        panic!("unsupported OS")
+    };
+    open_specific(url, &browser, &args)
+}
+
+fn open_specific(url: &str, browser: &str, browser_args: &[&str]) -> IoRes<Child> {
+    use std::process::Command;
+    let url = Url::parse(url).unwrap();
+    print!("starting process '{}' with url {:?}\n", browser, url);
+
+    Command::new(browser)
+        .args(browser_args)
+        .arg(url.to_string())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+}
 
 #[derive(Clone,RustcDecodable,RustcEncodable)]
 pub enum Command{

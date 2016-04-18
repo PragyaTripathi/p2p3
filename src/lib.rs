@@ -7,6 +7,7 @@ extern crate rustc_serialize;
 extern crate docopt;
 extern crate rand;
 extern crate ws;
+extern crate url;
 
 mod commit;
 mod compile;
