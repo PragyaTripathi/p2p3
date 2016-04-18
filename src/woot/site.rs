@@ -2,6 +2,7 @@
 
 extern crate rustc_serialize;
 use rustc_serialize::json;
+use std::collections::VecDeque;
 use super::clock::Clock;
 use super::sequence::Sequence;
 use super::operation::Operation;
@@ -14,12 +15,18 @@ pub struct Site {
     site_id: u32,
     logical_clock: Clock,
     sequence: Sequence,
-    pool: Vec<Operation>,
+    pub pool: VecDeque<Operation>,
 }
 
 impl Site {
     pub fn new(id: u32) -> Site {
-        Site {site_id: id, logical_clock: Clock::new(), sequence: Sequence::new(), pool: Vec::default()}
+        Site {site_id: id, logical_clock: Clock::new(), sequence: Sequence::new(), pool: VecDeque::default()}
+    }
+
+    pub fn implement_pool(&mut self) {
+        for operation in self.pool.clone().iter() {
+            self.implement_operation(operation.clone());
+        }
     }
 
     pub fn parse_given_string(&mut self, file_contents: &str) {
@@ -82,7 +89,7 @@ impl Site {
                     if self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id) {
                         self.sequence.integrate_ins(new_value, prev_id, next_id)
                     } else {
-                        self.pool.push(given_operation); // if the operation is not executable, push it back to queue
+                        self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
                     }
                 }
@@ -94,7 +101,7 @@ impl Site {
                     if can_integrate {
                         self.sequence.integrate_del(&w_char);
                     } else {
-                        self.pool.push(given_operation); // if the operation is not executable, push it back to queue
+                        self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
                     }
                 }
@@ -108,10 +115,10 @@ impl Site {
         // Call network manager to broadcast
     }
 
-    fn reception(&mut self, encoded: String) {
+    pub fn reception(&mut self, encoded: String) {
         // Deserialize
         let decoded: Operation = json::decode(&encoded).unwrap();
-        self.pool.push(decoded);
+        self.pool.push_back(decoded);
     }
 
     fn can_integrate_id(&self, id: &CharId) -> bool {
@@ -156,6 +163,8 @@ fn test_operation() {
     site.sequence.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
     site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: 1});
     assert_eq!(site2.value(), "a");
+    site2.implement_operation(Operation::Insert{w_char: wchar2.clone(), from_site: 1});
+    assert_eq!(site2.value(), "ab");
     site2.implement_operation(Operation::Delete{w_char: wchar1.clone(), from_site: 1});
     assert_eq!(site2.value(), "");
     site2.implement_operation(Operation::Delete{w_char: wchar5.clone(), from_site: 1});

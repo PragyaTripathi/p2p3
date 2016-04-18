@@ -6,3 +6,5 @@ pub enum Operation {
     Insert {w_char: WootChar, from_site: u32},
     Delete {w_char: WootChar, from_site: u32}
 }
+unsafe impl Send for Operation {}
+unsafe impl Sync for Operation {}
