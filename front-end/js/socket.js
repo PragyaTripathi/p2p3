@@ -6,5 +6,8 @@ sock.onopen = function(event){
 
 sock.onmessage = function(event){
   console.log(event.data);
-  //TODO: handle data
+  var json = event.data,
+  obj = eval("(" + json + ')');
+  console.log(obj.fields[1]);
+  editor.setValue(obj.fields[1]);
 }

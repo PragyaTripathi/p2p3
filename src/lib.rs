@@ -16,4 +16,4 @@ pub mod network;
 mod permission;
 pub mod storage;
 pub mod ui;
-mod woot;
+pub mod woot;
