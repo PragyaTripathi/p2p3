@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code,unused_variables,unused_imports)]
 
 use std::cmp::Ordering;
 

@@ -1,3 +1,4 @@
+#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
 use rustc_serialize::json;
 use std::io::Result as IoRes;
 use std::process::{Child, Stdio};

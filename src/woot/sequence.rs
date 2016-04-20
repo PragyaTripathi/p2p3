@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code,unused_variables,unused_imports)]
 use super::woot_char::WootChar;
 use super::char_id::CharId;
 use super::char_id::create_char_id;

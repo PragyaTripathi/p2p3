@@ -1,3 +1,5 @@
+#![allow(dead_code,unused_variables,unused_imports)]
+
 extern crate crust;
 extern crate time;
 extern crate git2;
@@ -8,6 +10,7 @@ extern crate docopt;
 extern crate rand;
 extern crate getopts;
 extern crate ws;
+extern crate url;
 
 mod commit;
 mod compile;
@@ -61,14 +64,15 @@ fn main() {
         return;
     };
     let file_path = "permissions.txt";
-    let mut git_access = GitAccess::new(git_url.clone(), local_path.clone(), git_username.clone(), git_password.clone());
-    let mut static_site = site_singleton(site_id);
+    let git_access = GitAccess::new(git_url.clone(), local_path.clone(), git_username.clone(), git_password.clone());
+    let static_site = site_singleton(site_id);
     match git_access.clone_repo(&local_path) {
         Ok(()) => {},
         Err(e) => {
             println!("The folder already exits");
         },
     };
+
     let permission_level = get_permission_level(&git_access);
     match permission_level {
         PermissionLevel::Editor => println!("The user is an editor"),

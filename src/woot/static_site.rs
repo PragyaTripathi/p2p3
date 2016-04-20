@@ -1,3 +1,5 @@
+#![allow(dead_code,unused_variables,unused_imports)]
+
 use std::sync::{Arc,Mutex,Once,ONCE_INIT,Condvar};
 use std::{mem,thread,env};
 use super::site::Site;

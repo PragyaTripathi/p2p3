@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code,unused_variables,unused_imports)]
 use super::woot_char::WootChar;
 
 #[derive(Clone,PartialEq,Debug,RustcDecodable,RustcEncodable)]

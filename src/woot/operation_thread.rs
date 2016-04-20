@@ -1,3 +1,4 @@
+#![allow(dead_code,unused_variables,unused_imports)]
 use super::static_site::site_singleton;
 use rustc_serialize::json;
 use super::char_id::create_char_id;
@@ -10,7 +11,7 @@ use std::time::Duration;
 use std::sync::mpsc::channel;
 
 pub fn run(site_id: u32) {
-    let mut static_site = site_singleton(site_id);
+    let static_site = site_singleton(site_id);
 
     let site = static_site.inner.clone();
     let site2 = static_site.inner.clone();

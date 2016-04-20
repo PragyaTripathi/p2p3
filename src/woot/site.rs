@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code,unused_variables,unused_imports)]
 
 extern crate rustc_serialize;
 use rustc_serialize::json;
