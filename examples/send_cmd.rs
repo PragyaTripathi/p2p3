@@ -1,6 +1,6 @@
 extern crate p2p3;
 
-use p2p3::ui::{UiHandler, Command};
+use p2p3::ui::{UiHandler, Command, FnCommand};
 use p2p3::woot::site::Site;
 use std::io::stdin;
 use std::fs::File;
@@ -9,6 +9,18 @@ use std::path::Path;
 
 fn main(){
     let ui = UiHandler::new(4242);
+    fn factory() -> FnCommand {
+        Box::new(|comm| {
+            match comm {
+                Commit => println!("Commit button pressed"),
+                Commit => println!("Commit invoked"),
+            }
+            println!("in command func");
+            Ok("".to_string())
+        })
+    };
+    let commandFunc = factory();
+    ui.add_listener(commandFunc);
     let initial_file_content = read_file("Cargo.toml");
 
     // Initialize editor content

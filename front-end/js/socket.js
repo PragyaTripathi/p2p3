@@ -8,6 +8,14 @@ sock.onmessage = function(event){
   console.log(event.data);
   var json = event.data,
   obj = eval("(" + json + ')');
-  console.log(obj.fields[1]);
+  console.log(obj);
   editor.setValue(obj.fields[1]);
+}
+
+function compileOnClick() {
+    console.log("Compile on click");
+    sock.send(JSON.stringify({
+      variant: "Compile",
+      fields: [],
+    }));
 }
