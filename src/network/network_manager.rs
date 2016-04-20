@@ -2,7 +2,7 @@
 //use std;
 
 use std::collections::{BTreeMap, HashMap};
-use crust::{Service, OurConnectionInfo, PeerId};
+use super::crust::{Service, OurConnectionInfo, PeerId};
 //use crust::{Service, Protocol, Endpoint, ConnectionInfoResult,
 //            SocketAddr, OurConnectionInfo,
 //            PeerId};

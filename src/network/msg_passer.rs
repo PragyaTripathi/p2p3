@@ -1,4 +1,4 @@
-use crust::PeerId;
+use super::crust::PeerId;
 use std::collections::HashMap;
 
 pub struct MsgPasser {

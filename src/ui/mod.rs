@@ -65,7 +65,7 @@ pub struct UiInner{
 
 impl Handler for UiInner {
     fn on_open(&mut self, _: Handshake) -> Result<()> {
-        self.out.timeout(50, Token(0));
+        self.out.timeout(50, Token(0)).unwrap();
         Ok(())
     }
 
@@ -107,7 +107,7 @@ impl Handler for UiInner {
                 Err(_) => {break;}
             }
         }
-        self.out.timeout(50, Token(0));
+        self.out.timeout(50, Token(0)).unwrap();
         Ok(())
     }
 }

@@ -1,8 +1,9 @@
-extern crate crust;
-extern crate time;
-extern crate git2;
 #[macro_use]
 extern crate maidsafe_utilities;
+
+//extern crate crust;
+extern crate time;
+extern crate git2;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate rand;
