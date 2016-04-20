@@ -28,6 +28,7 @@ use woot::static_site::site_singleton;
 use woot::operation_thread::run;
 use permission::permissions_handler::get_permission_level;
 use permission::permissions_handler::PermissionLevel;
+use compile::run_c;
 use ui::{UiHandler, Command, FnCommand, open_url};
 use std::io::stdin;
 use std::fs::File;
@@ -71,7 +72,7 @@ fn main() {
         print_usage(&program, opts);
         return;
     };
-    let file_path = "permissions.txt";
+    let file_path = "c_code.c";
     let git_access = GitAccess::new(git_url.clone(), local_path.clone(), git_username.clone(), git_password.clone());
     let static_site = site_singleton(site_id);
     match git_access.clone_repo(&local_path) {
@@ -98,22 +99,27 @@ fn main() {
         site.parse_given_string(&initial_file_content);
     }
 
-    // for i in 0..10{
-    //     ui.send_command(Command::Insert(i,"Hello there".to_string()));
-    // }
     let p = env::current_dir().unwrap();
     let p2p3_url = format!("file://{}/front-end/index.html",p.display());
     let ui = UiHandler::new(port_number, p2p3_url);
-    fn factory() -> FnCommand {
+    fn recieve_commands() -> FnCommand {
         Box::new(|comm| {
             match comm {
-                Compile => println!("Commit button pressed"),
+                Compile => {
+                    // need site and ui from environment TODO
+                    let site_clone = site_singleton(1).inner.clone();
+                    let mut site = site_clone.lock().unwrap();
+                    match run_c(&site.content()){
+                        Ok(o) => println!("output: {}", o),
+                        //Ok(o) => ui.send_command(Command::Output(o)), TODO
+                        Err(e) => println!("error {}", e),
+                    };
+                },
             }
-            println!("in command func");
             Ok("".to_string())
         })
     };
-    let command_func = factory();
+    let command_func = recieve_commands();
     ui.add_listener(command_func);
     let mut content = String::new();
     {
@@ -131,7 +137,7 @@ fn main() {
 fn read_file(url: &str) -> String {
     let path = Path::new(url);
     let mut file = match File::open(&path) {
-        Err(_) => panic!("could not open"),
+        Err(_) => panic!("could not open {}", url),
         Ok(file) => file,
     };
     let mut s = String::new();

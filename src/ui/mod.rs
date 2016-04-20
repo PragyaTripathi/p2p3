@@ -42,7 +42,9 @@ fn open_specific(url: &str, browser: &str, browser_args: &[&str]) -> IoRes<Child
 pub enum Command{
     Insert(u32, String),
     Delete(u32, u32),
+    Output(String),
     Commit,
+    Compile,
 }
 
 pub type FnCommand = Box<Fn(&Command)->Res<String, String> + Send + Sync>;

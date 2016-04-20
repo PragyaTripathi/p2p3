@@ -12,7 +12,7 @@ fn main(){
     fn factory() -> FnCommand {
         Box::new(|comm| {
             match comm {
-                Commit => println!("Commit button pressed"),
+                Compile => println!("Compile button pressed"),
                 Commit => println!("Commit invoked"),
             }
             println!("in command func");
