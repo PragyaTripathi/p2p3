@@ -13,7 +13,7 @@ impl Sequence {
         Sequence { list: Vec::default()}
     }
 
-    pub fn value(&self) -> String {
+    pub fn content(&self) -> String {
         let mut return_string = String::new();
         for wchar in self.list.iter() {
             if wchar.visible {
@@ -182,15 +182,15 @@ fn test_integrate_del() {
     let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
     let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
-    assert_eq!(seq.value(), "a");
+    assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
-    assert_eq!(seq.value(), "ab");
+    assert_eq!(seq.content(), "ab");
     seq.integrate_del(&wchar2);
-    assert_eq!(seq.value(), "a");
+    assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    assert_eq!(seq.value(), "ac");
+    assert_eq!(seq.content(), "ac");
     seq.integrate_ins(wchar4, char_id_2, char_id_3);
-    assert_eq!(seq.value(), "adc");
+    assert_eq!(seq.content(), "adc");
 }
 
 #[test]
@@ -205,13 +205,13 @@ fn test_integrate_ins() {
     let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
     let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
     seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
-    assert_eq!(seq.value(), "a");
+    assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar2, char_id_1, CharId::Ending);
-    assert_eq!(seq.value(), "ab");
+    assert_eq!(seq.content(), "ab");
     seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    assert_eq!(seq.value(), "abc");
+    assert_eq!(seq.content(), "abc");
     seq.integrate_ins(wchar4, char_id_2, char_id_3);
-    assert_eq!(seq.value(), "abdc");
+    assert_eq!(seq.content(), "abdc");
 }
 
 #[test]

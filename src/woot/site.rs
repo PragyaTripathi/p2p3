@@ -35,8 +35,8 @@ impl Site {
         }
     }
 
-    pub fn value(&mut self) -> String {
-        return self.sequence.value();
+    pub fn content(&mut self) -> String {
+        return self.sequence.content();
     }
 
     pub fn generate_insert(&mut self, pos: usize, alpha: char, broadcast: bool) {
@@ -135,7 +135,7 @@ fn test_generate_insert() {
     let mut site = Site::new(1);
     site.generate_insert(0, 'H', false);
     let val = "H";
-    assert_eq!(site.value(), val);
+    assert_eq!(site.content(), val);
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn test_generate_del() {
     let mut site = Site::new(1);
     site.generate_insert(0, 'H', false);
     site.generate_del(0);
-    assert_eq!(site.value(), "");
+    assert_eq!(site.content(), "");
 }
 
 #[test]
@@ -162,11 +162,11 @@ fn test_operation() {
     let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', char_id_2.clone(), CharId::Ending); // From site 2
     site.sequence.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
     site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: 1});
-    assert_eq!(site2.value(), "a");
+    assert_eq!(site2.content(), "a");
     site2.implement_operation(Operation::Insert{w_char: wchar2.clone(), from_site: 1});
-    assert_eq!(site2.value(), "ab");
+    assert_eq!(site2.content(), "ab");
     site2.implement_operation(Operation::Delete{w_char: wchar1.clone(), from_site: 1});
-    assert_eq!(site2.value(), "");
+    assert_eq!(site2.content(), "");
     site2.implement_operation(Operation::Delete{w_char: wchar5.clone(), from_site: 1});
     assert_eq!(site2.pool.len(), 0);
 }
@@ -176,6 +176,6 @@ fn test_site() {
     let mut site = Site::new(1);
     let file_contents = "fn main() { \n println!(\"Hello, P2P3!\"); \n }";
     site.parse_given_string(file_contents);
-    let value = site.value();
+    let value = site.content();
     assert_eq!(value, file_contents);
 }

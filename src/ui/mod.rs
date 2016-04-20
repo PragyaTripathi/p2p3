@@ -113,7 +113,7 @@ impl Handler for UiInner {
 
 impl UiHandler{
     #[allow(dead_code)]
-    pub fn new(port: u16) -> UiHandler {
+    pub fn new(port: u16, url: String) -> UiHandler {
         let (tx,rx) = channel();
         println!("listening on 127.0.0.1:{}",port);
         thread::spawn(move||{
@@ -130,6 +130,8 @@ impl UiHandler{
                      ui
                  }).unwrap();
         });
+        let mut browser_proc = open_url(&url).unwrap();
+        browser_proc.wait();
         rx.recv().unwrap()
     }
 

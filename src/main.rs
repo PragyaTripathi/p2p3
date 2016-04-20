@@ -28,6 +28,11 @@ use woot::static_site::site_singleton;
 use woot::operation_thread::run;
 use permission::permissions_handler::get_permission_level;
 use permission::permissions_handler::PermissionLevel;
+use ui::{UiHandler, Command, FnCommand, open_url};
+use std::io::stdin;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -44,6 +49,7 @@ fn main() {
     opts.optopt("p", "", "Password", "Password");
     opts.optopt("s", "", "Site id", "SiteId");
     opts.optopt("f", "", "File path to clone the git repo", "FilePath");
+    opts.optopt("d", "port", "Port number", "PortNumber");
     opts.optflag("h", "help", "print this help menu");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
@@ -58,6 +64,8 @@ fn main() {
     let git_password = matches.opt_str("p").unwrap();
     let site_id_str = matches.opt_str("s").unwrap();
     let site_id = site_id_str.parse::<u32>().unwrap();
+    let port = matches.opt_str("d").unwrap();
+    let port_number = port.parse::<u16>().unwrap();
     let local_path = matches.opt_str("f").unwrap();
     if matches.free.len() > 0 {
         print_usage(&program, opts);
@@ -81,5 +89,58 @@ fn main() {
     let operation_thread = thread::spawn(move || {
         run(site_id);
     });
+    let file_name = &(local_path+file_path);
+    // Initialize editor content
+    {
+        let initial_file_content = read_file(file_name);
+        let site_clone = static_site.inner.clone();
+        let mut site = site_clone.lock().unwrap();
+        site.parse_given_string(&initial_file_content);
+    }
 
+    // for i in 0..10{
+    //     ui.send_command(Command::Insert(i,"Hello there".to_string()));
+    // }
+    let p = env::current_dir().unwrap();
+    let p2p3_url = format!("file://{}/front-end/index.html",p.display());
+    let ui = UiHandler::new(port_number, p2p3_url);
+    fn factory() -> FnCommand {
+        Box::new(|comm| {
+            match comm {
+                Compile => println!("Commit button pressed"),
+            }
+            println!("in command func");
+            Ok("".to_string())
+        })
+    };
+    let command_func = factory();
+    ui.add_listener(command_func);
+    let mut content = String::new();
+    {
+        let site_clone = static_site.inner.clone();
+        let mut site = site_clone.lock().unwrap();
+        let mut borrowed_content = &mut content;
+        *borrowed_content = site.content();
+    }
+    ui.send_command(Command::Insert(0, content));
+    println!("Connection with front-end initialized.");
+    let mut x = String::new();
+    stdin().read_line(&mut x).unwrap();
+}
+
+fn read_file(url: &str) -> String {
+    let path = Path::new(url);
+    let mut file = match File::open(&path) {
+        Err(_) => panic!("could not open"),
+        Ok(file) => file,
+    };
+    let mut s = String::new();
+    match file.read_to_string(&mut s) {
+        Err(_) => panic!("Could not read"),
+        Ok(_) => return s,
+    }
+}
+
+fn init_editor(initial_content: &str, ui: &UiHandler) {
+    ui.send_command(Command::Insert(0, initial_content.to_string()));
 }
