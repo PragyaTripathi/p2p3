@@ -5,15 +5,24 @@ sock.onopen = function(event){
 };
 
 sock.onmessage = function(event){
-  console.log(event.data);
   var json = event.data,
   obj = eval("(" + json + ')');
   console.log(obj);
-  editor.setValue(obj.fields[1]);
+  switch (obj.variant) {
+    case "Insert":
+      editor.setValue(obj.fields[1]); //TODO
+      break;
+    case "Output":
+      console.log(obj.fields[0]);
+      var output = document.getElementById('output');
+      output.innerHTML = obj.fields[0];
+      break;
+    default:
+
+  }
 }
 
 function compileOnClick() {
-    console.log("Compile on click");
     sock.send(JSON.stringify({
       variant: "Compile",
       fields: [],
