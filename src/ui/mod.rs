@@ -4,9 +4,8 @@ use std::io::Result as IoRes;
 use std::process::{Child, Stdio};
 use std::result::Result as Res;
 use std::sync::mpsc::channel;
-use std::sync::mpsc;
-use std::sync::{Arc,Mutex};
-use std::thread;
+use std::sync::{mpsc, Arc, Mutex, Once, ONCE_INIT};
+use std::{thread, mem};
 use url::Url;
 use ws::{listen, Handler, Sender, Result, Message, Handshake, CloseCode, Error};
 use ws::util::Token;
@@ -61,8 +60,6 @@ pub struct UiInner{
     out: Sender,
     share: UiHandler
 }
-
-
 
 impl Handler for UiInner {
     fn on_open(&mut self, _: Handshake) -> Result<()> {
@@ -145,5 +142,31 @@ impl UiHandler{
     #[allow(dead_code)]
     pub fn send_command(&self, cmd: Command){
         self.tx.send(cmd).unwrap();
+    }
+}
+
+#[derive(Clone)]
+pub struct StaticUiHandler {
+    pub inner: Arc<Mutex<UiHandler>>
+}
+
+pub fn static_ui_handler(port: u16, url: String) -> StaticUiHandler {
+    // Initialize it to a null value
+    static mut SINGLETON: *const StaticUiHandler = 0 as *const StaticUiHandler;
+    static ONCE: Once = ONCE_INIT;
+
+    unsafe {
+        ONCE.call_once(|| {
+            // Make it
+            let singleton = StaticUiHandler {
+                inner: Arc::new((Mutex::new(UiHandler::new(port, url))))
+            };
+
+            // Put it in the heap so it can outlive this call
+            SINGLETON = mem::transmute(Box::new(singleton));
+        });
+
+        // Now we give out a copy of the data that is safe to use concurrently.
+        return (*SINGLETON).clone();
     }
 }

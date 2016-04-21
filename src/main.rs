@@ -20,6 +20,7 @@ mod permission;
 pub mod storage;
 mod ui;
 mod woot;
+mod utils;
 
 use std::{thread,env};
 use getopts::Options;
@@ -29,7 +30,8 @@ use woot::operation_thread::run;
 use permission::permissions_handler::get_permission_level;
 use permission::permissions_handler::PermissionLevel;
 use compile::run_c;
-use ui::{UiHandler, Command, FnCommand, open_url};
+use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
+use utils::p2p3_globals;
 use std::io::stdin;
 use std::fs::File;
 use std::io::prelude::*;
@@ -68,13 +70,18 @@ fn main() {
     let port = matches.opt_str("d").unwrap();
     let port_number = port.parse::<u16>().unwrap();
     let local_path = matches.opt_str("f").unwrap();
+    let p = env::current_dir().unwrap();
+    let p2p3_url = format!("file://{}/front-end/index.html",p.display());
+
+    let mut globals = p2p3_globals();
+    globals.init_globals(site_id, port_number, p2p3_url);
     if matches.free.len() > 0 {
         print_usage(&program, opts);
         return;
     };
     let file_path = "c_code.c";
     let git_access = GitAccess::new(git_url.clone(), local_path.clone(), git_username.clone(), git_password.clone());
-    let static_site = site_singleton(site_id);
+    let static_site = site_singleton(globals.get_site_id());
     match git_access.clone_repo(&local_path) {
         Ok(()) => {},
         Err(e) => {
@@ -99,18 +106,19 @@ fn main() {
         site.parse_given_string(&initial_file_content);
     }
 
-    let p = env::current_dir().unwrap();
-    let p2p3_url = format!("file://{}/front-end/index.html",p.display());
-    let ui = UiHandler::new(port_number, p2p3_url);
+    let static_ui = static_ui_handler(globals.get_port(), globals.get_url());
     fn recieve_commands() -> FnCommand {
         Box::new(|comm| {
             match comm {
                 Compile => {
                     // need site and ui from environment TODO
-                    let site_clone = site_singleton(1).inner.clone();
+                    let p2p3_globals = p2p3_globals().clone();
+                    let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
                     let mut site = site_clone.lock().unwrap();
+                    let ui_clone = static_ui_handler(p2p3_globals.get_port(), p2p3_globals.get_url()).inner.clone();
+                    let mut ui = ui_clone.lock().unwrap();
                     match run_c(&site.content()){
-                        Ok(o) => println!("output: {}", o),
+                        Ok(o) => ui.send_command(Command::Output(o)),
                         //Ok(o) => ui.send_command(Command::Output(o)), TODO
                         Err(e) => println!("error {}", e),
                     };
@@ -120,15 +128,19 @@ fn main() {
         })
     };
     let command_func = recieve_commands();
-    ui.add_listener(command_func);
-    let mut content = String::new();
     {
-        let site_clone = static_site.inner.clone();
-        let mut site = site_clone.lock().unwrap();
-        let mut borrowed_content = &mut content;
-        *borrowed_content = site.content();
+        let ui_inner = static_ui.inner.clone();
+        let ui = ui_inner.lock().unwrap();
+        ui.add_listener(command_func);
+        let mut content = String::new();
+        {
+            let site_clone = static_site.inner.clone();
+            let mut site = site_clone.lock().unwrap();
+            let mut borrowed_content = &mut content;
+            *borrowed_content = site.content();
+        }
+        ui.send_command(Command::Insert(0, content));
     }
-    ui.send_command(Command::Insert(0, content));
     println!("Connection with front-end initialized.");
     let mut x = String::new();
     stdin().read_line(&mut x).unwrap();
