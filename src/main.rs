@@ -75,13 +75,17 @@ fn main() {
     let file_path = "c_code.c";
     let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
 
-    let mut globals = p2p3_globals();
-    globals.init_globals(site_id, port_number, p2p3_url, git_access.clone());
+    {
+        let globals = p2p3_globals().inner.clone();
+        let mut values = globals.lock().unwrap();
+        values.init(site_id, port_number, p2p3_url.clone(), git_access.clone());
+    }
+
     if matches.free.len() > 0 {
         print_usage(&program, opts);
         return;
     };
-    let static_site = site_singleton(globals.get_site_id());
+    let static_site = site_singleton(site_id);
     match git_access.clone_repo() {
         Ok(()) => {},
         Err(e) => {
@@ -106,18 +110,21 @@ fn main() {
         site.parse_given_string(&initial_file_content);
     }
 
-    let static_ui = static_ui_handler(globals.get_port(), globals.get_url());
+    let static_ui = static_ui_handler(port_number, p2p3_url.clone());
+    println!("Called Static UI Handler");
     fn recieve_commands() -> FnCommand {
         Box::new(|comm| {
             let command = comm.clone();
             match command {
                 Command::Compile => {
                     // need site and ui from environment TODO
-                    let p2p3_globals = p2p3_globals().clone();
-                    let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
+                    let globals = p2p3_globals().inner.clone();
+                    let values = globals.lock().unwrap();
+                    let site_id = values.get_site_id();
+                    let site_clone = site_singleton(site_id).inner.clone();
                     let mut site = site_clone.lock().unwrap();
-                    let ui_clone = static_ui_handler(p2p3_globals.get_port(), p2p3_globals.get_url()).inner.clone();
-                    let mut ui = ui_clone.lock().unwrap();
+                    let ui_clone = static_ui_handler(values.get_port(), values.get_url()).inner.clone();
+                    let ui = ui_clone.lock().unwrap();
                     match run_c(&site.content()){
                         Ok(o) => ui.send_command(Command::Output(o)),
                         //Ok(o) => ui.send_command(Command::Output(o)), TODO
@@ -125,19 +132,21 @@ fn main() {
                     };
                 },
                 Command::InsertChar(position, character) => {
-                    let p2p3_globals = p2p3_globals().clone();
-                    let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
+                    let globals = p2p3_globals().inner.clone();
+                    let values = globals.lock().unwrap();
+                    let site_clone = site_singleton(values.get_site_id()).inner.clone();
                     let mut site = site_clone.lock().unwrap();
                     site.generate_insert(position, character, true);
                 },
                 Command::DeleteChar(position) => {
-                    let p2p3_globals = p2p3_globals().clone();
-                    let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
+                    let globals = p2p3_globals().inner.clone();
+                    let values = globals.lock().unwrap();
+                    let site_clone = site_singleton(values.get_site_id()).inner.clone();
                     let mut site = site_clone.lock().unwrap();
                     site.generate_del(position);
                 },
                 Command::Commit => {
-                    // TODO figure out the p2p3 globals way to get git access object    
+                    // TODO figure out the p2p3 globals way to get git access object
                     let ga = GitAccess::new("https://github.com/roshanib/dummyRepo".to_string(),
                         "D:\\DS\\Project\\repo\\".to_string(), "c_code.c".to_string(),
                         "p2p3user".to_string(), "test123".to_string());
@@ -154,6 +163,7 @@ fn main() {
             Ok("".to_string())
         })
     };
+    println!("Created receive commands");
     let command_func = recieve_commands();
     {
         let ui_inner = static_ui.inner.clone();
