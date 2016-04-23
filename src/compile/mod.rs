@@ -32,7 +32,7 @@ fn make_file(path: &Path, input: &str) -> Result<(), String>{
 #[allow(dead_code)]
 pub fn run_c(input: &str) -> Result<String, String> {
     let temp_dir_name = make_temp_dir();
-    let c_file = temp_dir_name.join("temp_c_file.c");
+    let c_file = temp_dir_name.join("temp.c");
     let exe = temp_dir_name.join("temp.exe");
 
     match make_file(&c_file, &input){
@@ -69,15 +69,30 @@ pub fn run_c(input: &str) -> Result<String, String> {
 
 #[allow(dead_code)]
 pub fn run_python(input: &str) -> Result<String, String> {
-    let temp_dir = make_temp_dir();
-    let py_file = temp_dir.join("temp_py.c");
+    run_interp(input, "python")
+}
 
-    match make_file(&py_file, &input){
+#[allow(dead_code)]
+pub fn run_ruby(input: &str) -> Result<String, String> {
+    run_interp(input, "ruby")
+}
+
+#[allow(dead_code)]
+pub fn run_lua(input: &str) -> Result<String, String> {
+    run_interp(input, "lua")
+}
+
+#[allow(dead_code)]
+fn run_interp(input: &str, cmd: &str) -> Result<String, String> {
+    let temp_dir = make_temp_dir();
+    let tmp_file = temp_dir.join(format!("temp.{}", cmd));
+
+    match make_file(&tmp_file, &input){
         Ok(_) =>{},
         Err(e) => return Err(e)
     };
 
-    match Command::new("python").current_dir(temp_dir).arg(&py_file).output(){
+    match Command::new(cmd).current_dir(temp_dir).arg(&tmp_file).output(){
         Ok(out) => {
             if out.status.success() {
                 Ok(String::from_utf8(out.stdout).unwrap())
@@ -85,7 +100,7 @@ pub fn run_python(input: &str) -> Result<String, String> {
                 let a = out.status.code().unwrap();
                 let b = String::from_utf8(out.stderr).unwrap();
                 let c = String::from_utf8(out.stdout).unwrap();
-                Err(format!("Python failed with code {}: {} {}", a, b, c))
+                Err(format!("{} failed with code {}: {} {}",cmd, a, b, c))
             }
         },
         Err(err) => Err(format!("Failed to run python with error: {}",err))
@@ -104,10 +119,11 @@ void main(){
     return 0;
 }";
 
-    static PY_CODE: &'static str =
-"
-print \"Hello World\",
-";
+    static PY_CODE: &'static str = "print \"Hello World\",";
+
+    static LUA_CODE: &'static str = "print(\"Hello World\")";
+
+    static RUBY_CODE: &'static str = "puts \"Hello World\" ";
 
     #[test]
     fn run_simple_c(){
@@ -134,4 +150,32 @@ print \"Hello World\",
             }
         }
     }
+
+    #[test]
+    fn run_simple_lua(){
+        let out = run_lua(LUA_CODE);
+
+        print!("{:?}", out);
+        match out{
+            Err(_) => { assert!(false) },
+            Ok(res) => {
+                assert_eq!(res.trim_right(), "Hello World");
+            }
+        }
+    }
+
+    #[test]
+    fn run_simple_ruby(){
+        let out = run_ruby(RUBY_CODE);
+
+        print!("{:?}", out);
+        match out{
+            Err(_) => { assert!(false) },
+            Ok(res) => {
+                assert_eq!(res.trim_right(), "Hello World");
+            }
+        }
+    }
+
+
 }
