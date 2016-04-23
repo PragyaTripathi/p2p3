@@ -49,7 +49,8 @@ pub struct BootstrapHandler {
 }
 
 impl BootstrapHandler {
-    pub fn bootstrap_load(git: GitAccess, p2p3_file_name: String) -> BootstrapHandler{
+    pub fn bootstrap_load(git: GitAccess) -> BootstrapHandler{
+        let p2p3_file_name: String = get_p2p3_config(&git.file_url);
         let url = git.local_url.clone() + &p2p3_file_name;
         let mut file = File::open(url).unwrap();
         let mut file_str = String::new();
@@ -97,7 +98,7 @@ impl BootstrapHandler {
         file.write_all(&file_byte).unwrap();
 
         let p2p3_config_file = get_p2p3_config(&self.file_name);
-        match self.git.commit_path("Update config file.", &p2p3_config_file) {
+        match self.git.commit_config("Update config file.", &self.file_name) {
             Ok(()) => (),
             Err(e) => {
                 println!("Commit error: {}", e);

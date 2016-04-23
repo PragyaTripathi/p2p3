@@ -10,16 +10,21 @@ use std::path::Path;
 
 #[derive(Clone,PartialEq,Debug)]
 pub struct GitAccess {
-    file_url: String,
+    pub file_url: String,
     pub repo_url: String,
     pub local_url: String,
     username: String,
-    password: String,
+    password: String
 }
 
 impl GitAccess {
     pub fn new(repo: String, local_path: String, file_path: String, usern: String, passwd: String) -> GitAccess {
-        GitAccess{repo_url: repo, local_url: local_path, file_url: file_path, username: usern, password: passwd}
+        GitAccess{
+            repo_url: repo,
+            local_url: local_path,
+            file_url: file_path,
+            username: usern,
+            password: passwd}
     }
 
     pub fn clone_repo(&self) -> Result<(), git2::Error> {
@@ -80,6 +85,34 @@ impl GitAccess {
 
         Ok(())
     }
+
+    pub fn commit_config(&self, commit_message: &str, config_path: &str) -> Result<(), Error>  {
+        println!("repo open {}", &self.local_url);
+        let repo = match Repository::open(Path::new(&self.local_url)) {
+            Ok(repo) => repo,
+            Err(e) =>return Err(e)
+        };
+        let sig = try!(repo.signature());
+        let tree_id = {
+            let mut index = try!(repo.index());
+            println!("adding path {}", config_path);
+            try!(index.add_path(Path::new(&config_path)));
+            try!(index.write_tree_to(&repo))
+        };
+
+        let tree = try!(repo.find_tree(tree_id));
+        // lookup current HEAD commit
+        let head_ref = match repo.head() {
+            Ok(head_ref) =>  head_ref,
+            Err(e) => return Err(e)
+        };
+        let head_oid = head_ref.target().unwrap();
+        let commit = try!(repo.find_commit(head_oid));
+        // make that parent of new commit
+        try!(repo.commit(Some("HEAD"), &sig, &sig, commit_message, &tree, &[&commit]));
+        Ok(())
+    }
+
 }
 
 /*
