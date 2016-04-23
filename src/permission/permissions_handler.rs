@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use storage::storage_helper::GitAccess;
+use git2::ErrorCode;
 
 pub enum PermissionLevel {
     Editor,
@@ -11,7 +12,15 @@ pub fn get_permission_level(ga: &GitAccess) -> PermissionLevel {
     return match ga.push() {
         Ok(()) => PermissionLevel::Editor,
         Err(e) => {
-            println!("{}", e);
+            if e.code() == ErrorCode::GenericError {
+                if e.to_string().contains("403") {
+                    println!("User does not have write access")
+                } else if e.to_string().contains("401") {
+                    println!("Invalid password")
+                }
+            } else if e.code() == ErrorCode::NotFastForward {
+                // TODO need to pull here
+            }
             PermissionLevel::Viewer
         },
     };
