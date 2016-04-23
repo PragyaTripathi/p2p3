@@ -72,17 +72,17 @@ fn main() {
     let local_path = matches.opt_str("f").unwrap();
     let p = env::current_dir().unwrap();
     let p2p3_url = format!("file://{}/front-end/index.html",p.display());
+    let file_path = "c_code.c";
+    let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
 
     let mut globals = p2p3_globals();
-    globals.init_globals(site_id, port_number, p2p3_url);
+    globals.init_globals(site_id, port_number, p2p3_url, git_access.clone());
     if matches.free.len() > 0 {
         print_usage(&program, opts);
         return;
     };
-    let file_path = "c_code.c";
-    let git_access = GitAccess::new(git_url.clone(), local_path.clone(), git_username.clone(), git_password.clone());
     let static_site = site_singleton(globals.get_site_id());
-    match git_access.clone_repo(&local_path) {
+    match git_access.clone_repo() {
         Ok(()) => {},
         Err(e) => {
             println!("The folder already exits");
@@ -137,7 +137,12 @@ fn main() {
                     site.generate_del(position);
                 },
                 Command::Commit => {
-
+                    // TODO figure out the p2p3 globals way to get git access object    
+                    let ga = GitAccess::new("https://github.com/roshanib/dummyRepo".to_string(),
+                        "D:\\DS\\Project\\repo\\".to_string(), "c_code.c".to_string(),
+                        "p2p3user".to_string(), "test123".to_string());
+                    ga.commit_path("Commit message").unwrap();
+                    ga.push().unwrap();
                 },
                 Command::InsertString(position, content) => {
 

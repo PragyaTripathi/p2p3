@@ -25,6 +25,13 @@ body {
     height: auto;
   }
 
+  #commitButton {
+    float: right;
+    color: #ff9000;
+    width: 100px;
+    height: auto;
+  }
+
   #editor {
     position: absolute;
     top: 3em;

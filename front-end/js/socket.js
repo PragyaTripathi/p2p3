@@ -7,7 +7,7 @@ sock.onopen = function(event){
 sock.onmessage = function(event){
   var json = event.data,
   obj = eval("(" + json + ')');
-  console.log(obj);
+  // console.log(obj);
   switch (obj.variant) {
     case "InsertString":
       editor.setValue(obj.fields[1]); //TODO
@@ -46,6 +46,14 @@ function asDelta(ch, isVisible, i) {
 function compileOnClick() {
     sock.send(JSON.stringify({
       variant: "Compile",
+      fields: [],
+    }));
+}
+
+function commitOnClick() {
+    console.log("Commit clicked");  
+    sock.send(JSON.stringify({
+      variant: "Commit",
       fields: [],
     }));
 }

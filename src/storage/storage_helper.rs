@@ -12,24 +12,26 @@ use std::path::Path;
 pub struct GitAccess {
     repo_url: String,
     local_url: String,
+    file_url: String,
     username: String,
     password: String,
 }
 
 impl GitAccess {
-    pub fn new(repo: String, local_path: String, usern: String, passwd: String) -> GitAccess {
-        GitAccess{repo_url: repo, local_url: local_path, username: usern, password: passwd}
+    pub fn new(repo: String, local_path: String, file_path: String, usern: String, passwd: String) -> GitAccess {
+        GitAccess{repo_url: repo, local_url: local_path, file_url: file_path, username: usern, password: passwd}
     }
 
-    pub fn clone_repo(&self, dst_dir: &str) -> Result<(), git2::Error> {
-        match Repository::clone(&self.repo_url, dst_dir) {
+    pub fn clone_repo(&self) -> Result<(), git2::Error> {
+        match Repository::clone(&self.repo_url, &self.local_url) {
             Ok(repo) => repo,
             Err(e) => return Err(e)
         };
         Ok(())
     }
 
-    pub fn commit_path(&self, commit_message: &str, file_path: &str) -> Result<(), Error>  {
+    pub fn commit_path(&self, commit_message: &str) -> Result<(), Error>  {
+        println!("repo open {}", &self.local_url);
         let repo = match Repository::open(Path::new(&self.local_url)) {
             Ok(repo) => repo,
             Err(e) =>return Err(e)
@@ -37,7 +39,8 @@ impl GitAccess {
         let sig = try!(repo.signature());
         let tree_id = {
             let mut index = try!(repo.index());
-            try!(index.add_path(Path::new(file_path)));
+            println!("adding path {}", &self.file_url);
+            try!(index.add_path(Path::new(&self.file_url)));
             try!(index.write_tree_to(&repo))
         };
 

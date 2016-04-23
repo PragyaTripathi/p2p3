@@ -1,18 +1,21 @@
 use std::sync::{Once, ONCE_INIT};
 use std::mem;
+use storage::storage_helper::GitAccess;
 
 #[derive(Clone)]
 pub struct P2P3Globals {
     site_id: u32,
     port: u16,
-    url: String
+    url: String,
+    git_access: GitAccess
 }
 
 impl P2P3Globals {
-    pub fn init_globals(&mut self, site_id: u32, port: u16, url: String) {
+    pub fn init_globals(&mut self, site_id: u32, port: u16, url: String, git_access: GitAccess) {
         self.site_id = site_id;
         self.port = port;
         self.url = url;
+        self.git_access = git_access;
     }
 
     pub fn get_site_id(&self) -> u32 {
@@ -25,6 +28,10 @@ impl P2P3Globals {
 
     pub fn get_url(&self) -> String {
         self.url.clone()
+    }
+
+    pub fn get_git_access(&self) -> GitAccess {
+        self.git_access.clone()
     }
 }
 
@@ -39,7 +46,8 @@ pub fn p2p3_globals() -> P2P3Globals {
             let singleton = P2P3Globals {
                 site_id: 0,
                 port: 8080,
-                url: String::new()
+                url: String::new(),
+                git_access: GitAccess::new(String::new(),String::new(),String::new(),String::new(),String::new())
             };
 
             // Put it in the heap so it can outlive this call
