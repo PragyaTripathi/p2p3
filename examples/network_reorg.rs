@@ -18,12 +18,38 @@ use p2p3::network::cmd_parser::UserCommand;
 use p2p3::network::cmd_parser::parse_user_command;
 use p2p3::network::MessagePasser;
 use p2p3::network::MessagePasserT;
+use p2p3::network::bootstrap::BootstrapHandler;
+use p2p3::storage::storage_helper::GitAccess;
 use std::thread;
 use std::str::FromStr;
 
 fn main() {
+
+    // Get the four parameters from the front-end.
+    let repo_url: String = "https://github.com/KajoAyame/p2p3_test.git".to_string();
+    let local_url: String = "temp/".to_string();
+    let username: String = "zhou.xinghao.1991@gmail.com".to_string();
+    let password: String = "123456abc".to_string();
+
+
+    let git = GitAccess::new(repo_url, local_url, username, password);
+    match git.clone_repo() {
+        Ok(()) => (),
+        Err(e) => {
+            println!("{}, stop clone and read the config file in that directory", e);
+        }
+    }
+
+    println!("Starting bootstrap");
+
+    // Get file name from the front end.
+    let file_name: String = "file1.p2p3".to_string(); // Hardcode the file name.
+    let mut boot = BootstrapHandler::bootstrap_load(git, file_name);
+
+
+    // Network
     cmd_parser::print_usage();
-    let mp = p2p3::network::MessagePasser::new();
+    let mp = p2p3::network::MessagePasser::new(boot);
 
     mp.prepare_connection_info();
     loop {
@@ -90,4 +116,5 @@ fn main() {
     }
 
     drop(mp);
+
 }

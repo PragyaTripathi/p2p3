@@ -10,9 +10,9 @@ use std::path::Path;
 
 #[derive(Clone,PartialEq,Debug)]
 pub struct GitAccess {
-    repo_url: String,
-    local_url: String,
     file_url: String,
+    pub repo_url: String,
+    pub local_url: String,
     username: String,
     password: String,
 }
@@ -23,7 +23,7 @@ impl GitAccess {
     }
 
     pub fn clone_repo(&self) -> Result<(), git2::Error> {
-        match Repository::clone(&self.repo_url, &self.local_url) {
+        match Repository::clone(&self.repo_url, self.local_url.clone()) {
             Ok(repo) => repo,
             Err(e) => return Err(e)
         };

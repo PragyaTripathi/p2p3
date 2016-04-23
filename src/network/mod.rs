@@ -5,6 +5,7 @@ extern crate core;
 pub mod network_manager;
 pub mod cmd_parser;
 pub mod msg_passer;
+pub mod bootstrap;
 
 use self::core::iter::FromIterator;
 use rustc_serialize::json;
@@ -15,9 +16,11 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
+use rustc_serialize::json::Json;
+use network::bootstrap::BootstrapHandler;
 
 //sub-crate imports
-use self::crust::{Event, PeerId,Service, OurConnectionInfo, ConnectionInfoResult};
+use self::crust::{Event, PeerId,Service, OurConnectionInfo, ConnectionInfoResult, StaticContactInfo};
 use self::bincode::rustc_serialize::{encode, decode};
 
 //Aliases
@@ -82,7 +85,8 @@ pub struct MessagePasser{
     recv_queue: Am<VecDeque<Message>>,
     peer_seqs: Am<BTreeMap<PeerId, u32>>,
     conn_token: Am<u32>,
-    conn_infos: Am<HashMap<u32,OurConnectionInfo>>
+    conn_infos: Am<HashMap<u32,OurConnectionInfo>>,
+    bootstrap_handler: BootstrapHandler
 }
 
 #[derive(Clone,Debug)]
@@ -91,7 +95,7 @@ enum UiEvent{
 }
 
 impl MessagePasser {
-    pub fn new() -> MessagePasser {
+    pub fn new(boot: BootstrapHandler) -> MessagePasser {
         // Construct Service and start listening
         let (nw_tx, nw_rx) = channel();
         let (ui_tx, ui_rx) = channel();
@@ -118,7 +122,8 @@ impl MessagePasser {
             peer_seqs: Arc::new(Mutex::new(BTreeMap::new())),
             recv_cvar: Arc::new(Condvar::new()),
             conn_token: Arc::new(Mutex::new(0)),
-            conn_infos: Arc::new(Mutex::new(HashMap::new()))};
+            conn_infos: Arc::new(Mutex::new(HashMap::new())),
+            bootstrap_handler: boot};
 
         let handler = {
             let mp = mp.clone();
@@ -213,7 +218,13 @@ impl MessagePasser {
             // Invoked when a new message is received. Passes the message.
             Event::NewMessage(peer_id, bytes) => {
                 self.on_recv_msg(peer_id, bytes.clone());
-                println!("message from {}: {}", peer_id, String::from_utf8(bytes).unwrap());
+                let decoded_msg: Message = decode(&bytes[..]).unwrap();
+                let kind = match decoded_msg.kind {
+                    MsgKind::Broadcast => "Broadcast",
+                    MsgKind::Normal => "Normal"
+                };
+                println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
+                //println!("message from {}: {}", peer_id, String::from_utf8(bytes).unwrap());
             },
             // Result to the call of Service::prepare_contact_info.
             Event::ConnectionInfoPrepared(result) => {
@@ -234,19 +245,43 @@ impl MessagePasser {
                 println!("{}", as_json(&their_info));
                 let mut conn_infos = unwrap_result!(self.conn_infos.lock());
                 conn_infos.insert(result_token, info);
+
+                /*
+                 *  Update config file.
+                 */
+                let info_json = unwrap_result!(json::encode(&their_info));
+                                //
+                let data = Json::from_str(info_json.as_str()).unwrap();
+                let obj = data.as_object().unwrap();
+                let foo = obj.get("static_contact_info").unwrap();
+
+                let json_str: String = foo.to_string();
+
+                let mut info: StaticContactInfo = json::decode(&json_str).unwrap();
+                info.tcp_acceptors.remove(0);
+                self.bootstrap_handler.update_config(info);
             },
             Event::BootstrapConnect(peer_id) => {
-
+                unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
+                println!("received BootstrapConnect with peerid: {}", peer_id);
+                let service = unwrap_result!(self.service.lock());
+                self.print_connected_nodes(&service);
             },
             Event::BootstrapAccept(peer_id) => {
-
+                unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
+                println!("received BootstrapAccept with peerid: {}", peer_id);
+                let service = unwrap_result!(self.service.lock());
+                self.print_connected_nodes(&service);
             },
             Event::BootstrapFinished =>{
-
+                println!("Receieved BootstrapFinished");
             },
+            // The event happens when we use "connect" cmd.
             Event::NewPeer(Ok(()), peer_id) => {
                 unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
                 println!("peer connected {}", peer_id);
+                let service = unwrap_result!(self.service.lock());
+                self.print_connected_nodes(&service);
             },
             Event::LostPeer(peer_id) => {
                 unwrap_result!(self.peer_seqs.lock()).remove(&peer_id);
@@ -256,6 +291,21 @@ impl MessagePasser {
                 println!("\nReceived event {:?} (not handled)", e);
             }
         }
+    }
+
+    pub fn print_connected_nodes(&self, service: &Service) {
+        let peers_id = self.peers();
+        println!("Node count: {}", peers_id.len());
+        for id in peers_id.iter() {
+            if let Some(conn_info) = service.connection_info(id) {
+                println!("    [{}]   {} <--> {} [{}][{}]",
+                         id, conn_info.our_addr, conn_info.their_addr, conn_info.protocol,
+                         if conn_info.closed { "closed" } else { "open" }
+                );
+            }
+        }
+
+        println!("");
     }
 }
 
