@@ -109,8 +109,9 @@ fn main() {
     let static_ui = static_ui_handler(globals.get_port(), globals.get_url());
     fn recieve_commands() -> FnCommand {
         Box::new(|comm| {
-            match comm {
-                Compile => {
+            let command = comm.clone();
+            match command {
+                Command::Compile => {
                     // need site and ui from environment TODO
                     let p2p3_globals = p2p3_globals().clone();
                     let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
@@ -123,6 +124,27 @@ fn main() {
                         Err(e) => println!("error {}", e),
                     };
                 },
+                Command::InsertChar(position, character) => {
+                    let p2p3_globals = p2p3_globals().clone();
+                    let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
+                    let mut site = site_clone.lock().unwrap();
+                    site.generate_insert(position, character, true);
+                },
+                Command::DeleteChar(position) => {
+                    let p2p3_globals = p2p3_globals().clone();
+                    let site_clone = site_singleton(p2p3_globals.get_site_id()).inner.clone();
+                    let mut site = site_clone.lock().unwrap();
+                    site.generate_del(position);
+                },
+                Command::Commit => {
+
+                },
+                Command::InsertString(position, content) => {
+
+                },
+                Command::Output(results) => {
+
+                }
             }
             Ok("".to_string())
         })
@@ -131,6 +153,7 @@ fn main() {
     {
         let ui_inner = static_ui.inner.clone();
         let ui = ui_inner.lock().unwrap();
+
         ui.add_listener(command_func);
         let mut content = String::new();
         {
@@ -139,7 +162,7 @@ fn main() {
             let mut borrowed_content = &mut content;
             *borrowed_content = site.content();
         }
-        ui.send_command(Command::Insert(0, content));
+        ui.send_command(Command::InsertString(0, content));
     }
     println!("Connection with front-end initialized.");
     let mut x = String::new();
@@ -157,8 +180,4 @@ fn read_file(url: &str) -> String {
         Err(_) => panic!("Could not read"),
         Ok(_) => return s,
     }
-}
-
-fn init_editor(initial_content: &str, ui: &UiHandler) {
-    ui.send_command(Command::Insert(0, initial_content.to_string()));
 }

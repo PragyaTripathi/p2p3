@@ -142,6 +142,27 @@ impl Sequence {
         val
     }
 
+    pub fn visible_index_of_id(&self, id: &CharId) -> usize {
+        let mut val = !0;
+        match *id {
+            CharId::Beginning => {
+                val = 0;
+            },
+            CharId::Ending => {
+                let visibles: Vec<WootChar> = self.list.iter().cloned().filter(|c| c.visible).collect();
+                val = visibles.len() - 1;
+            },
+            CharId::Regular {site_id, unique_id} => {
+                for (i, c) in self.list.iter().cloned().filter(|c| c.visible).enumerate() {
+                    if c.id == *id {
+                        val = i;
+                    }
+                }
+            }
+        }
+        val
+    }
+
     fn wchar_by_id(&self, id: &CharId) -> Option<&WootChar> {
         let mut_id = id.clone();
         match mut_id {
@@ -166,6 +187,29 @@ impl Sequence {
     fn sub_sequence(&self, prev_id: &CharId, next_id: &CharId) -> Vec<WootChar> {
         self.list.iter().cloned().filter(|c: &WootChar| (prev_id < &c.id && &c.id < next_id)).collect()
     }
+}
+
+#[test]
+fn test_visible_index_of_id() {
+    let mut seq = Sequence::new();
+    let char_id_1 = create_char_id(1, 0);
+    let char_id_2 = create_char_id(1, 1);
+    let char_id_3 = create_char_id(1, 2);
+    let char_id_4 = create_char_id(1, 3);
+    let char_id_5 = create_char_id(1, 4);
+    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+    let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
+    seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
+    seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
+    seq.integrate_del(&wchar2);
+    seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
+    seq.integrate_ins(wchar4, char_id_2, char_id_3.clone());
+    assert_eq!(seq.visible_index_of_id(&CharId::Beginning), 0);
+    assert_eq!(seq.visible_index_of_id(&CharId::Ending), 3);
+    assert_eq!(seq.visible_index_of_id(&char_id_3), 1);
 }
 
 #[test]

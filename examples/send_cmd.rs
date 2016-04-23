@@ -8,12 +8,18 @@ use std::io::prelude::*;
 use std::path::Path;
 
 fn main(){
-    let ui = UiHandler::new(4242);
+    let url = String::from("file:///Users/Pragya/Documents/18842_Distributed_Systems/p2p3/front-end/index.html");
+    let ui = UiHandler::new(4242, url);
     fn factory() -> FnCommand {
         Box::new(|comm| {
-            match comm {
-                Compile => println!("Compile button pressed"),
-                Commit => println!("Commit invoked"),
+            let command = comm.clone();
+            match command {
+                Command::Compile => println!("Compile button pressed"),
+                Command::Commit => println!("Commit invoked"),
+                Command::InsertString(_,_) => {},
+                Command::InsertChar(_,_) => {},
+                Command::DeleteChar(_) => {},
+                Command::Output(_) => {},
             }
             println!("in command func");
             Ok("".to_string())
@@ -52,5 +58,5 @@ fn read_file(url: &str) -> String {
 }
 
 fn init_editor(initial_content: &str, ui: UiHandler) {
-    ui.send_command(Command::Insert(0, initial_content.to_string()));
+    ui.send_command(Command::InsertString(0, initial_content.to_string()));
 }

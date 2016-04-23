@@ -39,8 +39,9 @@ fn open_specific(url: &str, browser: &str, browser_args: &[&str]) -> IoRes<Child
 
 #[derive(Clone,RustcDecodable,RustcEncodable)]
 pub enum Command{
-    Insert(u32, String),
-    Delete(u32, u32),
+    InsertString(usize, String),
+    InsertChar(usize, char),
+    DeleteChar(usize),
     Output(String),
     Commit,
     Compile,
