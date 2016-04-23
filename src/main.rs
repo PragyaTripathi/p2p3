@@ -131,11 +131,13 @@ fn main() {
                     };
                 },
                 Command::InsertChar(position, character) => {
+                    println!("Received {} {}", position, character);
                     let globals = p2p3_globals().inner.clone();
                     let values = globals.lock().unwrap();
                     let site_clone = site_singleton(values.get_site_id()).inner.clone();
                     let mut site = site_clone.lock().unwrap();
                     site.generate_insert(position, character, true);
+                    println!("Site content {}", site.content());
                 },
                 Command::DeleteChar(position) => {
                     let globals = p2p3_globals().inner.clone();

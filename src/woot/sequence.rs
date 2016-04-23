@@ -153,9 +153,14 @@ impl Sequence {
                 val = visibles.len() - 1;
             },
             CharId::Regular {site_id, unique_id} => {
-                for (i, c) in self.list.iter().cloned().filter(|c| c.visible).enumerate() {
+                let visibles: Vec<WootChar> = self.list.iter().cloned().filter(|c| c.visible).collect();
+                println!("length {}", visibles.len());
+                for (i, c) in visibles.iter().enumerate() {
+                    println!("index {}", i);
+                    println!("char {}", c.value);
                     if c.id == *id {
                         val = i;
+                        println!("value {}", i);
                     }
                 }
             }
@@ -200,15 +205,15 @@ fn test_visible_index_of_id() {
     let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
     let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
     let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending);
     let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
     seq.integrate_del(&wchar2);
     seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    seq.integrate_ins(wchar4, char_id_2, char_id_3.clone());
+    seq.integrate_ins(wchar4, char_id_3.clone(), CharId::Ending);
     assert_eq!(seq.visible_index_of_id(&CharId::Beginning), 0);
-    assert_eq!(seq.visible_index_of_id(&CharId::Ending), 3);
+    assert_eq!(seq.visible_index_of_id(&CharId::Ending), 2);
     assert_eq!(seq.visible_index_of_id(&char_id_3), 1);
 }
 

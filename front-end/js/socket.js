@@ -23,7 +23,9 @@ sock.onmessage = function(event){
       editor.getSession().getDocument().applyDeltas([delta]);
       break;
     case "DeleteChar":
-
+      console.log(obj);
+      var delta = asDelta(obj.fields[1], true, obj.fields[0]);
+      editor.getSession().getDocument().applyDeltas([delta]);
       break;
     case "DisableEditing":
       console.log("Disabling editing");
@@ -64,3 +66,28 @@ function commitOnClick() {
       fields: [],
     }));
 }
+
+editor.getSession().on('change', function(e) {
+    switch (e.action) {
+      case "insert":
+        if (e.lines[0].length == 1) {
+          var index = idx(e.start);
+          sock.send(JSON.stringify({
+            variant: "InsertChar",
+            fields: [index, e.lines[0]],
+          }));
+        }
+        break;
+      case "remove":
+
+        break;
+    }
+});
+
+editor.getSession().selection.on('changeSelection', function(e) {
+  console.log(e);
+});
+
+editor.getSession().selection.on('changeCursor', function(e) {
+  console.log(e);
+});

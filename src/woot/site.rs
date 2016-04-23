@@ -9,6 +9,8 @@ use super::operation::Operation;
 use super::woot_char::WootChar;
 use super::char_id::CharId;
 use super::char_id::create_char_id;
+use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
+use utils::p2p3_globals;
 
 #[derive(Clone)]
 pub struct Site {
@@ -87,7 +89,12 @@ impl Site {
                 // Insert only if the id doesn't exist
                 if !self.sequence.exists(&id) {
                     if self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id) {
-                        self.sequence.integrate_ins(new_value, prev_id, next_id)
+                        self.sequence.integrate_ins(new_value, prev_id, next_id);
+                        // let p2p3_globals = p2p3_globals().clone();
+                        // let ui_clone = static_ui_handler(p2p3_globals.get_port(), p2p3_globals.get_url()).inner.clone();
+                        // let mut ui = ui_clone.lock().unwrap();
+                        // let visible_index = self.sequence.visible_index_of_id(&id);
+                        // ui.send_command(Command::InsertChar(visible_index, w_char.value));
                     } else {
                         self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
