@@ -182,8 +182,17 @@ impl MessagePasser {
                 unwrap_result!(self.recv_queue.lock()).push_back(msg);
                 // Trigger the conditional variable
                 self.recv_cvar.notify_one();
+                let decoded_msg: Message = decode(&bytes[..]).unwrap();
+                let kind = match decoded_msg.kind {
+                    MsgKind::Broadcast => "Broadcast",
+                    MsgKind::Normal => "Normal"
+                };
+                println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
             },
             MsgKind::Broadcast =>{
+                if msg.source == self.my_id {
+                    return;
+                }
                 // update peer_seqs
                 {
                     let mut peer_seqs = unwrap_result!(self.peer_seqs.lock());
@@ -195,6 +204,15 @@ impl MessagePasser {
                     //Update the most recent seq_num
                     *rec_seq = msg.seq_num;
                 }
+                /*
+                 *  Print the boradcast message HERE!
+                 */
+                let decoded_msg: Message = decode(&bytes[..]).unwrap();
+                let kind = match decoded_msg.kind {
+                    MsgKind::Broadcast => "Broadcast",
+                    MsgKind::Normal => "Normal"
+                };
+                println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
 
                 // Add to recv_queue
                 unwrap_result!(self.recv_queue.lock()).push_back(msg.clone());
@@ -218,13 +236,6 @@ impl MessagePasser {
             // Invoked when a new message is received. Passes the message.
             Event::NewMessage(peer_id, bytes) => {
                 self.on_recv_msg(peer_id, bytes.clone());
-                let decoded_msg: Message = decode(&bytes[..]).unwrap();
-                let kind = match decoded_msg.kind {
-                    MsgKind::Broadcast => "Broadcast",
-                    MsgKind::Normal => "Normal"
-                };
-                println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
-                //println!("message from {}: {}", peer_id, String::from_utf8(bytes).unwrap());
             },
             // Result to the call of Service::prepare_contact_info.
             Event::ConnectionInfoPrepared(result) => {
