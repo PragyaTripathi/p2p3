@@ -40,7 +40,7 @@ pub fn run(site_id: u32) {
     }
 }
 
-#[test]
+//#[test]
 fn test_run() {
     let char_id_1 = create_char_id(1, 0);
     let char_id_2 = create_char_id(2, 0);

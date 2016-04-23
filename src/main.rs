@@ -140,11 +140,13 @@ fn main() {
                     println!("Site content {}", site.content());
                 },
                 Command::DeleteChar(position) => {
+                    println!("Received {}", position);
                     let globals = p2p3_globals().inner.clone();
                     let values = globals.lock().unwrap();
                     let site_clone = site_singleton(values.get_site_id()).inner.clone();
                     let mut site = site_clone.lock().unwrap();
                     site.generate_del(position);
+                    println!("Site content {}", site.content());
                 },
                 Command::Commit => {
                     let globals = p2p3_globals().inner.clone();
@@ -158,7 +160,7 @@ fn main() {
                 },
                 Command::Output(results) => {
 
-                }
+                },
                 Command::DisableEditing(_) => {
 
                 },

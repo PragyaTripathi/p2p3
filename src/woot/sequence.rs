@@ -65,7 +65,7 @@ impl Sequence {
     }
 
     pub fn integrate_ins(&mut self, wchar: WootChar, prev_id: CharId, next_id: CharId) {
-        let sub_sequence = self.sub_sequence(&prev_id, &next_id);
+        let sub_sequence = self.sub_sequence(prev_id.clone(), next_id.clone());
         if sub_sequence.len() == 0 {
             let index_of_next_id = self.position_of_id(&next_id);
              self.insert(wchar, index_of_next_id);
@@ -92,9 +92,17 @@ impl Sequence {
             while index < (list.len() - 1 ) && list[index].id < wchar.id {
                 index += 1;
             }
-            let guessed_prev_wchar: WootChar = list[index - 1].clone();
-            let guessed_next_wchar: WootChar = list[index].clone();
-            self.integrate_ins(wchar, guessed_prev_wchar.id.clone(), guessed_next_wchar.id.clone());
+            let guessed_prev_char_id: CharId = if index != 0 {
+                list[index - 1].id.clone()
+            } else {
+                CharId::Beginning
+            };
+            let guessed_next_char_id: CharId = if index < self.list.len() {
+                list[index].id.clone()
+            } else {
+                CharId::Ending
+            };
+            self.integrate_ins(wchar, guessed_prev_char_id, guessed_next_char_id);
          }
     }
 
@@ -106,16 +114,16 @@ impl Sequence {
     }
 
     pub fn integrate_del(&mut self, wchar: &WootChar) {
-        let position = self.position_of_wchar(wchar);
+        let position = self.position_of_id(&wchar.id);
         print!("At integrate_del position {}", position);
         self.hide(position);
     }
 
-    fn position_of_wchar(&self, w_char: &WootChar) -> usize {
+    fn position_of_wchar(&mut self, w_char: &WootChar) -> usize {
         let mut val = !0;
         for (i, c) in self.list.iter().enumerate() {
             println!("Wchar Position {}", i);
-            if c.value == w_char.value {
+            if c.id == w_char.id {
                 val = i;
             }
         }
@@ -189,8 +197,8 @@ impl Sequence {
     }
 
     /// Returns the part of the sequence between Character represented by prevId and nextId, both not included
-    fn sub_sequence(&self, prev_id: &CharId, next_id: &CharId) -> Vec<WootChar> {
-        self.list.iter().cloned().filter(|c: &WootChar| (prev_id < &c.id && &c.id < next_id)).collect()
+    fn sub_sequence(&self, prev_id: CharId, next_id: CharId) -> Vec<WootChar> {
+        self.list.iter().cloned().filter(|c| (prev_id < c.id && c.id < next_id)).collect()
     }
 }
 
@@ -234,11 +242,11 @@ fn test_integrate_del() {
     assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
     assert_eq!(seq.content(), "ab");
-    seq.integrate_del(&wchar2);
-    assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    assert_eq!(seq.content(), "ac");
+    assert_eq!(seq.content(), "abc");
     seq.integrate_ins(wchar4, char_id_2, char_id_3);
+    assert_eq!(seq.content(), "abdc");
+    seq.integrate_del(&wchar2);
     assert_eq!(seq.content(), "adc");
 }
 
@@ -290,10 +298,10 @@ fn test_sub_sequence() {
     seq.integrate_ins(wchar2.clone(), char_id_1.clone(), CharId::Ending);
     seq.integrate_ins(wchar3.clone(), char_id_2.clone(), CharId::Ending);
     seq.integrate_ins(wchar4.clone(), char_id_2.clone(), char_id_3.clone());
-    let sub_seq_1 = seq.sub_sequence(&wchar1.prev_id, &wchar1.next_id);
+    let sub_seq_1 = seq.sub_sequence(wchar1.prev_id.clone(), wchar1.next_id.clone());
     assert_eq!(sub_seq_1.len(), 4);
-    let sub_seq_2 = seq.sub_sequence(&char_id_1, &wchar1.next_id);
+    let sub_seq_2 = seq.sub_sequence(char_id_1.clone(), wchar1.next_id.clone());
     assert_eq!(sub_seq_2.len(), 3);
-    let sub_seq_3 = seq.sub_sequence(&char_id_1, &char_id_4);
+    let sub_seq_3 = seq.sub_sequence(char_id_1.clone(), char_id_4.clone());
     assert_eq!(sub_seq_3.len(), 2);
 }

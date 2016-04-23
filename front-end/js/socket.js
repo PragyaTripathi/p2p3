@@ -68,6 +68,7 @@ function commitOnClick() {
 }
 
 editor.getSession().on('change', function(e) {
+  console.log(e);
     switch (e.action) {
       case "insert":
         if (e.lines[0].length == 1) {
@@ -79,7 +80,14 @@ editor.getSession().on('change', function(e) {
         }
         break;
       case "remove":
-
+        var index = idx(e.start);
+        if (e.lines[0].length == 1) {
+          console.log("Sending DeleteChar");
+          sock.send(JSON.stringify({
+            variant: "DeleteChar",
+            fields: [index],
+          }));
+        }
         break;
     }
 });

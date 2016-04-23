@@ -20,6 +20,7 @@ fn main(){
                 Command::InsertChar(_,_) => {},
                 Command::DeleteChar(_) => {},
                 Command::Output(_) => {},
+                Command::DisableEditing(_) => {},
             }
             println!("in command func");
             Ok("".to_string())

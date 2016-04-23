@@ -43,15 +43,15 @@ impl Site {
 
     pub fn generate_insert(&mut self, pos: usize, alpha: char, broadcast: bool) {
         self.logical_clock.increment();
-        let mut position = pos;
-        if !(pos == 0 && pos == self.sequence.list.len()) {
-            position -= 1;
+        let mut position = !0;
+        if pos != 0 {
+            position = pos - 1;
         }
         let prev_wchar_id = match self.sequence.ith_visible(position) {
             Some(wchar) => wchar.clone().id,
             None => CharId::Beginning
         };
-        let next_wchar_id  = match self.sequence.ith_visible(position+1) {
+        let next_wchar_id  = match self.sequence.ith_visible(pos) {
             Some(wchar) => wchar.clone().id,
             None => CharId::Ending
         };
@@ -148,34 +148,65 @@ fn test_generate_insert() {
 #[test]
 fn test_generate_del() {
     let mut site = Site::new(1);
-    site.generate_insert(0, 'H', false);
+    site.generate_insert(0, 'A', false);
+    site.generate_insert(1, 'P', false);
+    site.generate_insert(2, 'R', false);
+    site.generate_insert(3, 'A', false);
+    site.generate_insert(4, 'P', false);
+    site.generate_insert(5, 'R', false);
+    assert_eq!(site.content(), "APRAPR");
     site.generate_del(0);
-    assert_eq!(site.content(), "");
+    assert_eq!(site.content(), "PRAPR");
+    site.generate_del(3);
+    assert_eq!(site.content(), "PRAR");
+    site.generate_del(0);
+    assert_eq!(site.content(), "RAR");
+    site.generate_insert(0, 'P', false);
+    assert_eq!(site.content(), "PRAR");
+    site.generate_insert(3, 'P', false);
+    assert_eq!(site.content(), "PRAPR");
+    site.generate_insert(0, 'A', false);
+    assert_eq!(site.content(), "APRAPR");
 }
 
 #[test]
 fn test_operation() {
     let mut site = Site::new(1);
     let mut site2 = Site::new(2);
+    let mut site3 = Site::new(3);
     let char_id_1 = create_char_id(1, 0);
     let char_id_2 = create_char_id(2, 0);
     let char_id_3 = create_char_id(1, 1);
-    let char_id_4 = create_char_id(1, 2);
+    let char_id_4 = create_char_id(3, 0);
     let char_id_5 = create_char_id(2, 1);
     let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
     let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', CharId::Beginning, CharId::Ending); // From site 2
     let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_1.clone(), CharId::Ending); // From site 1
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending); // From site 1
+    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', CharId::Beginning, CharId::Ending); // From site 3
     let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', char_id_2.clone(), CharId::Ending); // From site 2
     site.sequence.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
+    println!("Implementing insert operation from site 1");
     site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: 1});
-    assert_eq!(site2.content(), "a");
-    site2.implement_operation(Operation::Insert{w_char: wchar2.clone(), from_site: 1});
-    assert_eq!(site2.content(), "ab");
+    assert_eq!(site2.content(), site.content());
+    println!("Implementing site 2 insert operation");
+    site2.sequence.integrate_ins(wchar2.clone(), CharId::Beginning, CharId::Ending);
+    site.implement_operation(Operation::Insert{w_char: wchar2.clone(), from_site: 2});
+    assert_eq!(site2.content(), site.content());
+    println!("Implementing site 1 insert operation");
+    site2.implement_operation(Operation::Insert{w_char: wchar3.clone(), from_site: 1});
+    site.sequence.integrate_ins(wchar3.clone(), char_id_1.clone(), CharId::Ending);
+    assert_eq!(site2.content(), site.content());
+    println!("Implementing site 3 insert operation");
+    site2.implement_operation(Operation::Insert{w_char: wchar4.clone(), from_site: 3});
+    site.sequence.integrate_ins(wchar4.clone(), CharId::Beginning, CharId::Ending);
+    assert_eq!(site2.content(), site.content());
+    println!("Implementing site 1 delete operation");
     site2.implement_operation(Operation::Delete{w_char: wchar1.clone(), from_site: 1});
-    assert_eq!(site2.content(), "");
-    site2.implement_operation(Operation::Delete{w_char: wchar5.clone(), from_site: 1});
-    assert_eq!(site2.pool.len(), 0);
+    site.sequence.integrate_del(&wchar1.clone());
+    assert_eq!(site2.content(), site.content());
+    site2.implement_operation(Operation::Insert{w_char: wchar5.clone(), from_site: 1});
+    site.sequence.integrate_ins(wchar5.clone(), char_id_2.clone(), CharId::Ending);
+    assert_eq!(site2.content(), site.content());
 }
 
 #[test]

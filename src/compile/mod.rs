@@ -114,7 +114,7 @@ mod test{
     static C_CODE: &'static str =
 "#include <stdio.h>
 
-void main(){
+int main(){
     printf(\"Hello World\");
     return 0;
 }";
