@@ -61,15 +61,24 @@ impl BootstrapHandler {
 
         // Store it in the path
         let path = Path::new(&path_str);
-        let mut f = File::create(path.clone()).unwrap();
-
+        let mut crust_config_path = File::create(path.clone()).unwrap();
         let file_byte = file_str.into_bytes();
-        f.write_all(&file_byte).unwrap();
+        crust_config_path.write_all(&file_byte).unwrap();
+
+        /*
+         *  If we run it from "cargo run --example network_reorg", it will read the config file from another path.
+         *  So I create another file in that path in order for running the example.
+         */
+         
+        let path_str_1 = "target/debug/examples/".to_string() + &file_name;
+        let path_1 = Path::new(&path_str_1);
+        let mut crust_config_example_path = File::create(path_1.clone()).unwrap();
+        crust_config_example_path.write_all(&file_byte).unwrap();
 
         // Read it
-        let mut f = File::open(path).unwrap();
+        let mut crust_config_path = File::open(path).unwrap();
         let mut config_str = String::new();
-        f.read_to_string(&mut config_str).unwrap();
+        crust_config_path.read_to_string(&mut config_str).unwrap();
 
         // Read it into Config
 
@@ -97,7 +106,6 @@ impl BootstrapHandler {
         let file_byte = update_str.into_bytes();
         file.write_all(&file_byte).unwrap();
 
-        let p2p3_config_file = get_p2p3_config(&self.file_name);
         match self.git.commit_config("Update config file.", &self.file_name) {
             Ok(()) => (),
             Err(e) => {
