@@ -7,7 +7,7 @@ sock.onopen = function(event){
 sock.onmessage = function(event){
   var json = event.data,
   obj = eval("(" + json + ')');
-  // console.log(obj);
+  console.log(obj);
   switch (obj.variant) {
     case "InsertString":
       editor.setValue(obj.fields[1]); //TODO
@@ -24,6 +24,13 @@ sock.onmessage = function(event){
       break;
     case "DeleteChar":
 
+      break;
+    case "DisableEditing":
+      console.log("Disabling editing");
+      editor.setReadOnly(true);
+      editor.container.style.pointerEvents="none"
+      editor.renderer.setStyle("disabled", true)
+      editor.blur()
       break;
     default:
 
@@ -51,7 +58,7 @@ function compileOnClick() {
 }
 
 function commitOnClick() {
-    console.log("Commit clicked");  
+    console.log("Commit clicked");
     sock.send(JSON.stringify({
       variant: "Commit",
       fields: [],

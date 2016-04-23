@@ -14,13 +14,13 @@ function pos(index) {
 }
 
 editor.getSession().on('change', function(e) {
-    console.log(e);
+    // console.log(e);
 });
 
 editor.getSession().selection.on('changeSelection', function(e) {
-  console.log(e);
+  // console.log(e);
 });
 
 editor.getSession().selection.on('changeCursor', function(e) {
-  console.log(e);
+  // console.log(e);
 });

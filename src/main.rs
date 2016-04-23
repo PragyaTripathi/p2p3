@@ -102,7 +102,6 @@ fn main() {
         run(site_id);
     });
     let file_name = &(local_path+file_path);
-    // Initialize editor content
     {
         let initial_file_content = read_file(file_name);
         let site_clone = static_site.inner.clone();
@@ -146,10 +145,9 @@ fn main() {
                     site.generate_del(position);
                 },
                 Command::Commit => {
-                    // TODO figure out the p2p3 globals way to get git access object
-                    let ga = GitAccess::new("https://github.com/roshanib/dummyRepo".to_string(),
-                        "D:\\DS\\Project\\repo\\".to_string(), "c_code.c".to_string(),
-                        "p2p3user".to_string(), "test123".to_string());
+                    let globals = p2p3_globals().inner.clone();
+                    let values = globals.lock().unwrap();
+                    let ga = values.get_git_access();
                     ga.commit_path("Commit message").unwrap();
                     ga.push().unwrap();
                 },
@@ -159,6 +157,9 @@ fn main() {
                 Command::Output(results) => {
 
                 }
+                Command::DisableEditing(_) => {
+
+                },
             }
             Ok("".to_string())
         })
@@ -178,6 +179,12 @@ fn main() {
             *borrowed_content = site.content();
         }
         ui.send_command(Command::InsertString(0, content));
+        match permission_level {
+            PermissionLevel::Editor => {},
+            PermissionLevel::Viewer => {
+                ui.send_command(Command::DisableEditing(String::new()))
+            },
+        };
     }
     println!("Connection with front-end initialized.");
     let mut x = String::new();
