@@ -9,6 +9,7 @@ use ::storage::storage_helper::GitAccess;
 use self::crust::StaticContactInfo;
 use self::socket_addr::SocketAddr;
 use rustc_serialize::json;
+use rustc_serialize::json::{as_json,as_pretty_json};
 
 
 
@@ -50,39 +51,34 @@ pub struct BootstrapHandler {
 
 impl BootstrapHandler {
     pub fn bootstrap_load(git: GitAccess) -> BootstrapHandler{
+        // Load the p2p3 config file in the same directory of the working file.
         let p2p3_file_name: String = get_p2p3_config(&git.file_url);
-        let url = git.local_url.clone() + &p2p3_file_name;
-        let mut file = File::open(url).unwrap();
+        let p2p3_file_url = git.local_url.clone() + &p2p3_file_name;
+        let mut p2p3_file = File::open(p2p3_file_url).unwrap();
         let mut file_str = String::new();
-        file.read_to_string(&mut file_str).unwrap();
-        // Get the config file path
+        p2p3_file.read_to_string(&mut file_str).unwrap();
+
+        // Get the crust config file path
         let file_name = get_crust_config().unwrap().into_string().unwrap();
         let path_str = "target/debug/".to_string() + &file_name; // "target/debug/" in stead of "/target/debug/"
 
-        // Store it in the path
+        // Store the crust config file in the path
         let path = Path::new(&path_str);
         let mut crust_config_path = File::create(path.clone()).unwrap();
-        let file_byte = file_str.into_bytes();
+        let file_byte = file_str.clone().into_bytes();
         crust_config_path.write_all(&file_byte).unwrap();
 
         /*
          *  If we run it from "cargo run --example network_reorg", it will read the config file from another path.
          *  So I create another file in that path in order for running the example.
          */
-         
         let path_str_1 = "target/debug/examples/".to_string() + &file_name;
         let path_1 = Path::new(&path_str_1);
         let mut crust_config_example_path = File::create(path_1.clone()).unwrap();
         crust_config_example_path.write_all(&file_byte).unwrap();
 
-        // Read it
-        let mut crust_config_path = File::open(path).unwrap();
-        let mut config_str = String::new();
-        crust_config_path.read_to_string(&mut config_str).unwrap();
-
-        // Read it into Config
-
-        let conf: Config = json::decode(&config_str).unwrap();
+        // Construct the Config object.
+        let conf: Config = json::decode(&file_str).unwrap();
 
         BootstrapHandler {
             config: conf,
@@ -92,18 +88,20 @@ impl BootstrapHandler {
     }
 
     pub fn update_config(&self, info: StaticContactInfo) {
+        /*
+         *  Because the crust can only connect to the first TCP acceptor in the config file,
+         *  we need to insert the new node's info in the first position.
+         */
         let mut boot_clone = self.clone();
         boot_clone.config.hard_coded_contacts[0].tcp_acceptors.insert(0, info.tcp_acceptors[0]);
-        let update_str = json::encode(&boot_clone.config).unwrap();
+        let update_str = as_pretty_json(&boot_clone.config);
+        let pretty_json_str = update_str.to_string();
 
-        // Get the config file path
-        let path_str = self.git.local_url.clone() + &self.file_name; // "target/debug/" in stead of "/target/debug/"
-
-        // Store it in the path
+        // Get the p2p3 config file path and store the new config infomation it in that path.
+        let path_str = self.git.local_url.clone() + &self.file_name;
         let path = Path::new(&path_str);
         let mut file = File::create(path.clone()).unwrap();
-
-        let file_byte = update_str.into_bytes();
+        let file_byte = pretty_json_str.into_bytes();
         file.write_all(&file_byte).unwrap();
 
         match self.git.commit_config("Update config file.", &self.file_name) {
@@ -122,14 +120,18 @@ impl BootstrapHandler {
     }
 }
 
-
+/*
+ *  file.suffix -> file.crust.config
+ */
 pub fn get_crust_config() -> Result<::std::ffi::OsString, self::crust::Error> {
     let mut name = try!(config_file_handler::exe_file_stem());
     name.push(".crust.config");
     Ok(name)
 }
 
-
+/*
+ *  file.suffix -> file.p2p3
+ */
 pub fn get_p2p3_config(file_name: &String) -> String {
     let path = PathBuf::from(file_name);
     let mut name = path.file_stem().unwrap().to_os_string();

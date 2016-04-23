@@ -2,9 +2,7 @@ extern crate bincode;
 extern crate crust;
 extern crate core;
 
-pub mod network_manager;
 pub mod cmd_parser;
-pub mod msg_passer;
 pub mod bootstrap;
 
 use self::core::iter::FromIterator;

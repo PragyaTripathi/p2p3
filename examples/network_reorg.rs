@@ -11,8 +11,6 @@ use std::io;
 use rustc_serialize::json;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
-use p2p3::network::network_manager::Network;
-use p2p3::network::network_manager::handle_new_peer;
 use p2p3::network::cmd_parser;
 use p2p3::network::cmd_parser::UserCommand;
 use p2p3::network::cmd_parser::parse_user_command;
