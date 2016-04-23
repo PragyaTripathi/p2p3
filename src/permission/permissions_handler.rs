@@ -19,7 +19,11 @@ pub fn get_permission_level(ga: &GitAccess) -> PermissionLevel {
                     println!("Invalid password")
                 }
             } else if e.code() == ErrorCode::NotFastForward {
-                // TODO need to pull here
+                match ga.pull_repo() {
+                    Ok(()) => println!("pull repo successful"),
+                    Err(e) => println!("pull repo error {}", e),
+                };
+                return get_permission_level(ga);
             }
             PermissionLevel::Viewer
         },

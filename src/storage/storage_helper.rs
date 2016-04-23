@@ -6,6 +6,8 @@ extern crate git2;
 use git2::{Repository, Error};
 use git2::PushOptions;
 use git2::{RemoteCallbacks, Cred};
+use git2::{FileFavor, MergeOptions, FetchOptions};
+use git2::build::CheckoutBuilder;
 use std::path::Path;
 
 #[derive(Clone,PartialEq,Debug)]
@@ -82,6 +84,52 @@ impl GitAccess {
             Ok(p) => p,
             Err(e) => return Err(e)
         };
+
+        Ok(())
+    }
+
+    pub fn pull_repo(&self) -> Result<(), git2::Error> {
+        let repo = match Repository::open(Path::new(&self.local_url)) {
+            Ok(repo) => repo,
+            Err(e) => return Err(e)
+        };
+
+        // Fetch from origin
+        let remote = "origin";
+        let mut remote = try!(repo.find_remote(remote));
+        let mut fo = FetchOptions::new();
+        match remote.fetch(&[], Some(&mut fo), Some("")) {
+            Ok(()) => println!("Fetch successful"),
+            Err(e) => println!("fetch error {}", e),
+        };
+
+        // Merge with master
+        let mut mo = MergeOptions::new();
+        mo.file_favor(FileFavor::Theirs);
+        let mut co = CheckoutBuilder::new();
+        co.force();
+        let fetch_head_ref = repo.find_reference("FETCH_HEAD").unwrap();
+        let anno_commit = repo.reference_to_annotated_commit(&fetch_head_ref).unwrap();
+        match repo.merge(&[&anno_commit], Some(&mut mo), Some(&mut co)) {
+            Ok(()) => println!("Merge successful"),
+            Err(e) => println!("Merge error {} {}", e, e.raw_class()),
+        };
+
+        // conclude merge by commit with two parents ORIG_HEAD and MERGE_HEAD
+        let sig = try!(repo.signature());
+        let tree_id = {
+            let mut index = try!(repo.index());
+            try!(index.write_tree_to(&repo))
+        };
+        let tree = try!(repo.find_tree(tree_id));
+        //find orig head
+        let head_oid = repo.refname_to_id("ORIG_HEAD").unwrap();
+        let head_commit = repo.find_commit(head_oid).unwrap();
+        //find remote head
+        let merge_head_oid = repo.refname_to_id("MERGE_HEAD").unwrap();
+        let merge_head_commit = repo.find_commit(merge_head_oid).unwrap();
+        // make that parent of new commit
+        try!(repo.commit(Some("HEAD"), &sig, &sig, "conclude merge", &tree, &[&head_commit, &merge_head_commit]));
 
         Ok(())
     }
