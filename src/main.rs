@@ -29,7 +29,7 @@ use woot::static_site::site_singleton;
 use woot::operation_thread::run;
 use permission::permissions_handler::get_permission_level;
 use permission::permissions_handler::PermissionLevel;
-use compile::run_c;
+use compile::{CompileMode, run_code};
 use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 use utils::p2p3_globals;
 use std::io::stdin;
@@ -116,7 +116,6 @@ fn main() {
             let command = comm.clone();
             match command {
                 Command::Compile => {
-                    // need site and ui from environment TODO
                     let globals = p2p3_globals().inner.clone();
                     let values = globals.lock().unwrap();
                     let site_id = values.get_site_id();
@@ -124,9 +123,8 @@ fn main() {
                     let mut site = site_clone.lock().unwrap();
                     let ui_clone = static_ui_handler(values.get_port(), values.get_url()).inner.clone();
                     let ui = ui_clone.lock().unwrap();
-                    match run_c(&site.content()){
+                    match run_code(values.get_compile_mode(), &site.content()) {
                         Ok(o) => ui.send_command(Command::Output(o)),
-                        //Ok(o) => ui.send_command(Command::Output(o)), TODO
                         Err(e) => println!("error {}", e),
                     };
                 },
@@ -163,6 +161,12 @@ fn main() {
                 },
                 Command::DisableEditing(_) => {
 
+                },
+                Command::Mode(mode) => {
+                    println!("Mode selected: {}", mode);
+                    let globals = p2p3_globals().inner.clone();
+                    let mut values = globals.lock().unwrap();
+                    values.set_compile_mode(mode.parse::<CompileMode>().unwrap());
                 },
             }
             Ok("".to_string())

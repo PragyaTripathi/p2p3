@@ -45,7 +45,8 @@ pub enum Command{
     Output(String),
     Commit,
     Compile,
-    DisableEditing(String),    
+    DisableEditing(String),
+    Mode(String),    
 }
 
 pub type FnCommand = Box<Fn(&Command)->Res<String, String> + Send + Sync>;

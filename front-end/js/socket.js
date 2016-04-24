@@ -1,4 +1,5 @@
 var sock = new WebSocket("ws://127.0.0.1:4242/");
+var first_remove = true;
 
 sock.onopen = function(event){
   //TODO: connection is now open
@@ -80,6 +81,10 @@ editor.getSession().on('change', function(e) {
         }
         break;
       case "remove":
+        if (first_remove) {
+          first_remove = false;
+          break;  
+        }
         var index = idx(e.start);
         if (e.lines[0].length == 1) {
           console.log("Sending DeleteChar");
@@ -99,3 +104,11 @@ editor.getSession().selection.on('changeSelection', function(e) {
 editor.getSession().selection.on('changeCursor', function(e) {
   console.log(e);
 });
+
+function getSelectedMode(mode) {
+  editor.session.setMode("ace/mode/" + mode.value);
+  sock.send(JSON.stringify({
+    variant: "Mode",
+    fields: [mode.value],
+  }));
+}

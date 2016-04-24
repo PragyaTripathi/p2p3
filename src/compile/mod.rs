@@ -8,6 +8,30 @@ use std::io::Write;
 use std::error::Error;
 use std::path::PathBuf;
 use std::path::Path;
+use std::str::FromStr;
+
+#[derive(Clone)]
+pub enum CompileMode {
+    None,
+    C,
+    Python,
+    Ruby,
+    Lua,
+}
+
+impl FromStr for CompileMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<CompileMode, ()> {
+        match s {
+            "c_cpp" => Ok(CompileMode::C),
+            "python" => Ok(CompileMode::Python),
+            "ruby" => Ok(CompileMode::Ruby),
+            "lua" => Ok(CompileMode::Lua),
+            _ => Ok(CompileMode::None),
+        }
+    }
+}
 
 fn make_temp_dir() -> PathBuf {
     let mut temp_dir_name = env::temp_dir();
@@ -30,7 +54,20 @@ fn make_file(path: &Path, input: &str) -> Result<(), String>{
 }
 
 #[allow(dead_code)]
+pub fn run_code(compile_mode: CompileMode, input: &str) -> Result<String, String> {
+    match compile_mode {
+        CompileMode::C => run_c(input),
+        CompileMode::Python => run_python(input),
+        CompileMode::Lua => run_lua(input),
+        CompileMode::Ruby => run_ruby(input),
+        CompileMode::None => return Err("Could not find suitable compiler".to_string()),
+    }
+}
+
+
+#[allow(dead_code)]
 pub fn run_c(input: &str) -> Result<String, String> {
+    println!("run c code {}", input);
     let temp_dir_name = make_temp_dir();
     let c_file = temp_dir_name.join("temp.c");
     let exe = temp_dir_name.join("temp.exe");
@@ -69,16 +106,19 @@ pub fn run_c(input: &str) -> Result<String, String> {
 
 #[allow(dead_code)]
 pub fn run_python(input: &str) -> Result<String, String> {
+    println!("run python code");
     run_interp(input, "python")
 }
 
 #[allow(dead_code)]
 pub fn run_ruby(input: &str) -> Result<String, String> {
+    println!("run ruby code");
     run_interp(input, "ruby")
 }
 
 #[allow(dead_code)]
 pub fn run_lua(input: &str) -> Result<String, String> {
+    println!("run lua code");
     run_interp(input, "lua")
 }
 

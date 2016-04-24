@@ -18,6 +18,13 @@ body {
     margin-left: 0.5em;
   }
 
+  #mode {
+    float: right;
+    color: #ff9000;
+    width: 100px;
+    height: auto;
+  }
+
   #compileButton {
     float: right;
     color: #ff9000;

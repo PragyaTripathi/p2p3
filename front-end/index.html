@@ -11,6 +11,13 @@
         <span id="wsStatus">Online</span> <span id="wsMsg"></span>
         <button id="commitButton" onclick="commitOnClick()">Commit</button>
         <button id="compileButton" onclick="compileOnClick()">Compile</button>
+        <select id="mode" onchange="getSelectedMode(this)">
+          <option value=""></option>
+          <option value="c_cpp">C/C++</option>
+          <option value="python">Python</option>
+          <option value="ruby">Ruby</option>
+          <option value="lua">Lua</option>
+        </select>
       </div>
     </div>
 

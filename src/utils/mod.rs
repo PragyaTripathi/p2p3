@@ -1,6 +1,7 @@
 use std::sync::{mpsc, Arc, Mutex, Once, ONCE_INIT};
 use std::mem;
 use storage::storage_helper::GitAccess;
+use compile::CompileMode;
 
 #[derive(Clone)]
 pub struct P2P3Globals {
@@ -12,7 +13,8 @@ pub struct P2P3Values {
     site_id: u32,
     port: u16,
     url: String,
-    git_access: GitAccess
+    git_access: GitAccess,
+    mode: CompileMode
 }
 
 impl P2P3Values {
@@ -21,6 +23,7 @@ impl P2P3Values {
         self.port = port;
         self.url = url;
         self.git_access = git_access;
+        self.mode = CompileMode::None;
     }
 
     pub fn get_site_id(&self) -> u32 {
@@ -38,6 +41,14 @@ impl P2P3Values {
     pub fn get_git_access(&self) -> GitAccess {
         self.git_access.clone()
     }
+
+    pub fn get_compile_mode(&self) -> CompileMode {
+        self.mode.clone()
+    }
+
+    pub fn set_compile_mode(&mut self, mode: CompileMode) {
+        self.mode = mode;
+    }
 }
 
 pub fn p2p3_globals() -> P2P3Globals {
@@ -52,7 +63,8 @@ pub fn p2p3_globals() -> P2P3Globals {
                 site_id: 0,
                 port: 8080,
                 url: String::new(),
-                git_access: GitAccess::new(String::new(),String::new(),String::new(),String::new(),String::new())
+                git_access: GitAccess::new(String::new(),String::new(),String::new(),String::new(),String::new()),
+                mode: CompileMode::None
             };
             let singleton = P2P3Globals {
                 inner: Arc::new((Mutex::new(globals)))
