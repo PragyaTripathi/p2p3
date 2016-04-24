@@ -1,4 +1,4 @@
-use std::sync::{mpsc, Arc, Mutex, Once, ONCE_INIT};
+use std::sync::{Arc, Mutex, Once, ONCE_INIT};
 use std::mem;
 use storage::storage_helper::GitAccess;
 use compile::CompileMode;

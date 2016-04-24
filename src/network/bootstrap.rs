@@ -6,11 +6,12 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
 use ::storage::storage_helper::GitAccess;
-use self::crust::StaticContactInfo;
+use self::crust::{TheirConnectionInfo,StaticContactInfo};
 use self::socket_addr::SocketAddr;
 use rustc_serialize::json;
-use rustc_serialize::json::{as_json,as_pretty_json};
-
+use rustc_serialize::json::Json;
+use rustc_serialize::json::as_pretty_json;
+use super::MessagePasser;
 
 
 #[derive(PartialEq, Eq, Debug, RustcDecodable, RustcEncodable, Clone)]
@@ -87,7 +88,24 @@ impl BootstrapHandler {
         }
     }
 
-    pub fn update_config(&self, info: StaticContactInfo) {
+    fn static_info_from_their(their_info: TheirConnectionInfo) -> StaticContactInfo{
+        let info_json = unwrap_result!(json::encode(&their_info));
+        let data = Json::from_str(info_json.as_str()).unwrap();
+        let obj = data.as_object().unwrap();
+        let foo = obj.get("static_contact_info").unwrap();
+
+        let json_str: String = foo.to_string();
+
+        let info: StaticContactInfo = json::decode(&json_str).unwrap();
+        info
+    }
+
+    pub fn update_config(&self, mp: MessagePasser) {
+        let tok = mp.prepare_connection_info();
+        let their_info = mp.wait_conn_info(tok);
+        let mut info = BootstrapHandler::static_info_from_their(their_info);
+        info.tcp_acceptors.remove(0);
+
         /*
          *  Because the crust can only connect to the first TCP acceptor in the config file,
          *  we need to insert the new node's info in the first position.
@@ -138,7 +156,7 @@ pub fn get_p2p3_config(file_name: &String) -> String {
     name.push(".p2p3");
     let result = match name.into_string() {
         Ok(e) => e,
-        Err(e) => file_name.to_string()
+        Err(e) => {panic!("Couldn't make .p2p3 file for {} because {:?}", file_name, e);}
     };
     result
 }

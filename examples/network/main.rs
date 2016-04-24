@@ -1,34 +1,27 @@
 extern crate p2p3;
+extern crate crust;
+extern crate docopt;
 extern crate rustc_serialize;
 #[macro_use]
 extern crate maidsafe_utilities;
 
-extern crate crust;
-use crust::ConnectionInfoResult;
+mod cmd_parser;
+use cmd_parser::*;
 
 use std::io::Write;
 use std::io;
 use rustc_serialize::json;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
-use p2p3::network::cmd_parser;
-use p2p3::network::cmd_parser::UserCommand;
-use p2p3::network::cmd_parser::parse_user_command;
-use p2p3::network::MessagePasser;
 use p2p3::network::MessagePasserT;
 use p2p3::network::bootstrap::BootstrapHandler;
 use p2p3::storage::storage_helper::GitAccess;
-use std::thread;
 use std::str::FromStr;
-use p2p3::network::bootstrap::get_p2p3_config;
 
 fn main() {
 
     // Get the four parameters from the front-end.
     let repo_url: String = "https://github.com/KajoAyame/p2p3_test.git".to_string();
-    //let local_url: String = "temp/".to_string();
+    let local_url: String = "temp/".to_string();
     let file_path: String = "file1.rs".to_string();
-    let local_url: String = file_path.clone() + "/";
     let username: String = "zhou.xinghao.1991@gmail.com".to_string();
     let password: String = "123456abc".to_string();
 
@@ -44,13 +37,12 @@ fn main() {
     println!("Starting bootstrap");
 
     // Get file name from the front end.
-    let mut boot = BootstrapHandler::bootstrap_load(git);
+    let boot = BootstrapHandler::bootstrap_load(git);
 
     // Network
-    cmd_parser::print_usage();
-    let mp = p2p3::network::MessagePasser::new(boot);
-
-    mp.prepare_connection_info();
+    print_usage();
+    let (mp,_) = p2p3::network::MessagePasser::new();
+    boot.update_config(mp.clone());
     loop {
         print!("> ");
         assert!(io::stdout().flush().is_ok());
@@ -66,19 +58,22 @@ fn main() {
 
         match cmd {
             UserCommand::PrepareConnectionInfo => {
-                mp.prepare_connection_info();
+                let tok = mp.prepare_connection_info();
+                let con = mp.wait_conn_info(tok);
+                println!("Share this with other client:\n{}",json::encode(&con).unwrap());
             }
             UserCommand::Connect(our_info_index, their_info) => {
+                let their_info = unwrap_result!(json::decode(&their_info));
                 let index = u32::from_str(our_info_index.as_str()).unwrap();
                 mp.connect(index, their_info);
             }
             UserCommand::Send(index, message) => {
                 let peers = mp.peers();
                 //let index = usize::from_str(peer_index).unwrap();
-                mp.send(peers[index], message);
+                mp.send(peers[index], message).unwrap();
             }
             UserCommand::SendAll(message) => {
-                mp.broadcast(message);
+                mp.broadcast(message).unwrap();
             }
             UserCommand::List => {
                 let peers = mp.peers();
@@ -96,7 +91,7 @@ fn main() {
                 }
             }
             UserCommand::Broadcast(message) => {
-                mp.broadcast(message);
+                mp.broadcast(message).unwrap();
             }
             UserCommand::Test => {
                 println!("Hello");
@@ -113,7 +108,4 @@ fn main() {
             }
         }
     }
-
-    drop(mp);
-
 }

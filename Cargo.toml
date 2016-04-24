@@ -20,3 +20,7 @@ url = "*"
 getopts = "0.2"
 config_file_handler = "~0.3.0"
 socket_addr = "~0.1.0"
+
+[[example]]
+name = "network"
+path = "examples/network/main.rs"

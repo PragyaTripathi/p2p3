@@ -2,23 +2,20 @@ extern crate bincode;
 extern crate crust;
 extern crate core;
 
-pub mod cmd_parser;
 pub mod bootstrap;
 
 use self::core::iter::FromIterator;
-use rustc_serialize::json;
-use rustc_serialize::json::{as_json,as_pretty_json};
-use std::collections::{BTreeMap, VecDeque, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::collections::hash_map::Entry;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use rustc_serialize::json::Json;
-use network::bootstrap::BootstrapHandler;
+use std::thread::JoinHandle;
+use async_queue::AsyncQueue;
 
 //sub-crate imports
-use self::crust::{Event, PeerId,Service, OurConnectionInfo, ConnectionInfoResult, StaticContactInfo};
+use self::crust::{Event, PeerId,Service, ConnectionInfoResult, OurConnectionInfo, TheirConnectionInfo};
 use self::bincode::rustc_serialize::{encode, decode};
 
 //Aliases
@@ -79,12 +76,10 @@ pub struct MessagePasser{
     ui_tx: Sender<UiEvent>,
     seq_num: Am<u32>,
     service: Am<Service>,
-    recv_cvar: Arc<Condvar>,
-    recv_queue: Am<VecDeque<Message>>,
+    recv_queue: Arc<AsyncQueue<Message>>,
     peer_seqs: Am<BTreeMap<PeerId, u32>>,
     conn_token: Am<u32>,
-    conn_infos: Am<HashMap<u32,OurConnectionInfo>>,
-    bootstrap_handler: BootstrapHandler
+    conn_infos: Am<HashMap<u32,OurConnectionInfo>>
 }
 
 #[derive(Clone,Debug)]
@@ -93,7 +88,7 @@ enum UiEvent{
 }
 
 impl MessagePasser {
-    pub fn new(boot: BootstrapHandler) -> MessagePasser {
+    pub fn new() -> (MessagePasser, JoinHandle<()>) {
         // Construct Service and start listening
         let (nw_tx, nw_rx) = channel();
         let (ui_tx, ui_rx) = channel();
@@ -116,12 +111,10 @@ impl MessagePasser {
             ui_tx: ui_tx,
             service: Arc::new(Mutex::new(service)),
             seq_num :Arc::new(Mutex::new(0)),
-            recv_queue: Arc::new(Mutex::new(VecDeque::new())),
+            recv_queue: Arc::new(AsyncQueue::new()),
             peer_seqs: Arc::new(Mutex::new(BTreeMap::new())),
-            recv_cvar: Arc::new(Condvar::new()),
             conn_token: Arc::new(Mutex::new(0)),
-            conn_infos: Arc::new(Mutex::new(HashMap::new())),
-            bootstrap_handler: boot};
+            conn_infos: Arc::new(Mutex::new(HashMap::new()))};
 
         let handler = {
             let mp = mp.clone();
@@ -142,21 +135,32 @@ impl MessagePasser {
                 }
             })
         };
-        mp
+        (mp,unwrap_result!(handler))
     }
 
-    pub fn prepare_connection_info(&self){
+    pub fn prepare_connection_info(&self) -> u32{
         let mut token = unwrap_result!(self.conn_token.lock());
         unwrap_result!(self.service.lock()).prepare_connection_info(*token);
+        let ret = *token;
         *token+=1;
+        ret
     }
 
-    pub fn connect(&self, i:u32, their_info:String){
+    pub fn wait_conn_info(&self, tok: u32) -> TheirConnectionInfo{
+        loop {
+            let mut conns = unwrap_result!(self.conn_infos.lock());
+            match conns.entry(tok){
+                Entry::Occupied(e) =>{ return e.get().to_their_connection_info();},
+                Entry::Vacant(_) => {}
+            }
+        }
+    }
+
+    pub fn connect(&self, i:u32, their_info:TheirConnectionInfo){
         let mut infos = unwrap_result!(self.conn_infos.lock());
         match infos.entry(i){
             Entry::Occupied(oe)=>{
                 let our_info = oe.remove();
-                let their_info = unwrap_result!(json::decode(&their_info));
                 let service = unwrap_result!(self.service.lock());
                 service.connect(our_info, their_info);
             },
@@ -169,7 +173,7 @@ impl MessagePasser {
     }
 
     fn drop(&mut self){
-        self.ui_tx.send(UiEvent::Terminate);
+        unwrap_result!(self.ui_tx.send(UiEvent::Terminate));
     }
 
     fn on_recv_msg(&self, peer_id: PeerId, bytes: Vec<u8>){
@@ -177,9 +181,7 @@ impl MessagePasser {
         match msg.kind{
             MsgKind::Normal =>{
                 // Add to recv_queue
-                unwrap_result!(self.recv_queue.lock()).push_back(msg);
-                // Trigger the conditional variable
-                self.recv_cvar.notify_one();
+                self.recv_queue.enq(msg);
                 let decoded_msg: Message = decode(&bytes[..]).unwrap();
                 let kind = match decoded_msg.kind {
                     MsgKind::Broadcast => "Broadcast",
@@ -213,9 +215,7 @@ impl MessagePasser {
                 println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
 
                 // Add to recv_queue
-                unwrap_result!(self.recv_queue.lock()).push_back(msg.clone());
-                // Trigger the conditional variable
-                self.recv_cvar.notify_one();
+                self.recv_queue.enq(msg.clone());
 
                 // Forward to those with cyclically greater peer_id values
                 let peer_seqs = unwrap_result!(self.peer_seqs.lock());
@@ -246,29 +246,9 @@ impl MessagePasser {
                         return;
                     }
                 };
-                println!("Prepared connection info with id {}", result_token);
 
-                let their_info = info.to_their_connection_info();
-                //let info_json = unwrap_result!(json::encode(&their_info));
-                println!("Share this info with the peer you want to connect to:");
-                println!("{}", as_json(&their_info));
                 let mut conn_infos = unwrap_result!(self.conn_infos.lock());
                 conn_infos.insert(result_token, info);
-
-                /*
-                 *  Update config file.
-                 */
-                let info_json = unwrap_result!(json::encode(&their_info));
-                                //
-                let data = Json::from_str(info_json.as_str()).unwrap();
-                let obj = data.as_object().unwrap();
-                let foo = obj.get("static_contact_info").unwrap();
-
-                let json_str: String = foo.to_string();
-
-                let mut info: StaticContactInfo = json::decode(&json_str).unwrap();
-                info.tcp_acceptors.remove(0);
-                self.bootstrap_handler.update_config(info);
             },
             Event::BootstrapConnect(peer_id) => {
                 unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
@@ -326,16 +306,11 @@ impl MessagePasserT for MessagePasser {
     }
 
     fn recv_msg(&self) -> Result<Message, String>{
-        let mut recv_q = unwrap_result!(self.recv_queue.lock());
-        while let None = recv_q.front(){
-            recv_q = unwrap_result!(self.recv_cvar.wait(recv_q));
-        }
-        Ok(recv_q.pop_front().unwrap())
+        Ok(self.recv_queue.deq())
     }
 
     fn try_recv_msg(&self) -> Result<Option<Message>, String>{
-        let mut recv_q = unwrap_result!(self.recv_queue.lock());
-        Ok(recv_q.pop_front())
+        Ok(self.recv_queue.try_deq())
     }
 
     fn get_id(&self) -> PeerId {

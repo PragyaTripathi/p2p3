@@ -21,6 +21,7 @@ pub mod storage;
 mod ui;
 mod woot;
 mod utils;
+mod async_queue;
 
 use std::{thread,env};
 use getopts::Options;
