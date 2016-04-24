@@ -28,6 +28,23 @@ type Am<T> = Arc<Mutex<T>>;
 pub enum MsgKind {
     Normal,
     Broadcast,
+    PeerConnectionInfoRequest,
+    PeerConnectionInfoResponse
+}
+
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+pub struct PeerConnectionInfoRequest {
+    source_id: PeerId,
+    bridge_id: PeerId
+}
+
+#[derive(RustcEncodable, RustcDecodable, Debug)]
+pub struct PeerConnectionInfoResponse {
+    destination_id: PeerId,
+    bridge_id: PeerId,
+    info_id: PeerId,
+    info: TheirConnectionInfo,
+    responder_has_info: bool
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
@@ -182,12 +199,23 @@ impl MessagePasser {
             MsgKind::Normal =>{
                 // Add to recv_queue
                 self.recv_queue.enq(msg);
-                let decoded_msg: Message = decode(&bytes[..]).unwrap();
-                let kind = match decoded_msg.kind {
-                    MsgKind::Broadcast => "Broadcast",
-                    MsgKind::Normal => "Normal"
-                };
-                println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
+            },
+            MsgKind::PeerConnectionInfoRequest => {
+                /*
+                Spawn new thread,
+            	prepare connection info
+            	Wait for connection info to be available
+            	Put connection_info in a map(sourceId, connection Info)
+            	Send peer_info_response(sourceId, bridge_id, my Id, new info, false)
+                */
+                // thread.spawn(move || {
+                //     let token = self.prepare_connection_info();
+                //     let their_info = self.wait_conn_info(token);
+                //
+                // });
+            },
+            MsgKind::PeerConnectionInfoResponse => {
+
             },
             MsgKind::Broadcast =>{
                 if msg.source == self.my_id {
@@ -204,16 +232,6 @@ impl MessagePasser {
                     //Update the most recent seq_num
                     *rec_seq = msg.seq_num;
                 }
-                /*
-                 *  Print the boradcast message HERE!
-                 */
-                let decoded_msg: Message = decode(&bytes[..]).unwrap();
-                let kind = match decoded_msg.kind {
-                    MsgKind::Broadcast => "Broadcast",
-                    MsgKind::Normal => "Normal"
-                };
-                println!("message from {}: [{}] {}", peer_id, kind, decoded_msg.message);
-
                 // Add to recv_queue
                 self.recv_queue.enq(msg.clone());
 
