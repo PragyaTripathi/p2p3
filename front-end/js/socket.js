@@ -68,34 +68,54 @@ function commitOnClick() {
     }));
 }
 
+function insert_char_at_position(index, character) {
+  sock.send(JSON.stringify({
+    variant: "InsertChar",
+    fields: [index, character],
+  }));
+}
+
+function delete_char_at_position(index) {
+  sock.send(JSON.stringify({
+    variant: "DeleteChar",
+    fields: [index],
+  }));
+}
+
 editor.getSession().on('change', function(e) {
   console.log(e);
     switch (e.action) {
       case "insert":
-        if (e.lines[0].length == 1) {
-          var index = idx(e.start);
-          sock.send(JSON.stringify({
-            variant: "InsertChar",
-            fields: [index, e.lines[0]],
-          }));
+      var index = idx(e.start);
+        if (enter_key_detected(e)) {
+          insert_char_at_position(index, '\n');
+        } else if (e.lines[0].length == 1) {
+          insert_char_at_position(index, e.lines[0]);
         }
         break;
       case "remove":
         if (first_remove) {
           first_remove = false;
-          break;  
+          return;
         }
         var index = idx(e.start);
-        if (e.lines[0].length == 1) {
-          console.log("Sending DeleteChar");
-          sock.send(JSON.stringify({
-            variant: "DeleteChar",
-            fields: [index],
-          }));
+        if (enter_key_detected(e)) {
+          delete_char_at_position(index);
+        } else if (e.lines[0].length == 1) {
+          delete_char_at_position(index);
         }
         break;
     }
 });
+
+function enter_key_detected (e) {
+  if (e.start.row != e.end.row && e.lines.length == 2) {
+    if (e.lines[0] == "" && e.lines[1] == "") {
+      return true;
+    }
+  }
+  return false;
+}
 
 editor.getSession().selection.on('changeSelection', function(e) {
   console.log(e);
