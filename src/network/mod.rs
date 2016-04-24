@@ -1,7 +1,7 @@
 extern crate bincode;
 extern crate crust;
 extern crate core;
-
+extern crate rustc_serialize;
 pub mod bootstrap;
 
 use self::core::iter::FromIterator;
@@ -17,6 +17,7 @@ use async_queue::AsyncQueue;
 //sub-crate imports
 use self::crust::{Event, PeerId,Service, ConnectionInfoResult, OurConnectionInfo, TheirConnectionInfo};
 use self::bincode::rustc_serialize::{encode, decode};
+use self::rustc_serialize::json;
 
 //Aliases
 use ::maidsafe_utilities::event_sender::MaidSafeEventCategory as EventCategory;
@@ -63,6 +64,7 @@ pub trait MessagePasserT{
     fn next_seq_num(&self) -> u32;
     fn get_id(&self) -> PeerId;
     fn peers(&self) -> Vec<PeerId>;
+    fn peers_to_bridge(&self, source_peer: PeerId) -> Vec<PeerId>;
 
     fn broadcast(&self, msg: String) -> Result<(), String>{
         let msg = Message{
@@ -71,6 +73,19 @@ pub trait MessagePasserT{
             kind: MsgKind::Broadcast,
             seq_num: self.next_seq_num()};
         for peer in self.peers(){
+            unwrap_result!(self.send_msg(peer, msg.clone()));
+        }
+        Ok(())
+    }
+
+    fn broadcast_from_bridge(&self, msg: String, kind: MsgKind, source_peer: PeerId) -> Result<(), String>{
+        let msg = Message {
+            source: self.get_id(),
+            message: msg,
+            kind: kind,
+            seq_num: self.next_seq_num()
+        };
+        for peer in self.peers_to_bridge(source_peer) {
             unwrap_result!(self.send_msg(peer, msg.clone()));
         }
         Ok(())
@@ -96,7 +111,9 @@ pub struct MessagePasser{
     recv_queue: Arc<AsyncQueue<Message>>,
     peer_seqs: Am<BTreeMap<PeerId, u32>>,
     conn_token: Am<u32>,
-    conn_infos: Am<HashMap<u32,OurConnectionInfo>>
+    conn_infos: Am<HashMap<u32,OurConnectionInfo>>,
+    // temp_conn_infos intended to be used for full socket connection to store our connection infos sent for other peers
+    temp_conn_infos: Am<HashMap<PeerId,TheirConnectionInfo>>
 }
 
 #[derive(Clone,Debug)]
@@ -131,7 +148,9 @@ impl MessagePasser {
             recv_queue: Arc::new(AsyncQueue::new()),
             peer_seqs: Arc::new(Mutex::new(BTreeMap::new())),
             conn_token: Arc::new(Mutex::new(0)),
-            conn_infos: Arc::new(Mutex::new(HashMap::new()))};
+            conn_infos: Arc::new(Mutex::new(HashMap::new())),
+            temp_conn_infos: Arc::new(Mutex::new(HashMap::new()))
+        };
 
         let handler = {
             let mp = mp.clone();
@@ -208,11 +227,32 @@ impl MessagePasser {
             	Put connection_info in a map(sourceId, connection Info)
             	Send peer_info_response(sourceId, bridge_id, my Id, new info, false)
                 */
-                // thread.spawn(move || {
-                //     let token = self.prepare_connection_info();
-                //     let their_info = self.wait_conn_info(token);
-                //
-                // });
+                let request: PeerConnectionInfoRequest = json::decode(&msg.message).unwrap();
+                let mp = self.clone();
+                thread::Builder::new().spawn(move || {
+                    let token = mp.prepare_connection_info();
+                    let their_info = mp.wait_conn_info(token);
+                    let string_info = json::encode(&their_info).unwrap();
+                    let cloned_string = string_info.clone();
+                    let cloned_their_info: TheirConnectionInfo = json::decode(&cloned_string).unwrap();
+                    let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
+                    conn_infos.insert(request.source_id.clone(), their_info);
+                    let peer_info_response = PeerConnectionInfoResponse {
+                        destination_id: request.source_id.clone(),
+                        bridge_id: request.bridge_id.clone(),
+                        info_id: mp.my_id,
+                        info: cloned_their_info,
+                        responder_has_info: false
+                    };
+                    let message_body = json::encode(&peer_info_response).unwrap();
+                    let msg = Message {
+                        source: mp.my_id,
+                        message: message_body,
+                        kind: MsgKind::PeerConnectionInfoResponse,
+                        seq_num: mp.next_seq_num()
+                    };
+                    mp.send_msg(request.bridge_id, msg);
+                });
             },
             MsgKind::PeerConnectionInfoResponse => {
 
@@ -338,6 +378,11 @@ impl MessagePasserT for MessagePasser {
     fn peers(&self) -> Vec<PeerId>{
         let peer_seqs = unwrap_result!(self.peer_seqs.lock());
         Vec::from_iter(peer_seqs.keys().map(|k| *k))
+    }
+
+    fn peers_to_bridge(&self, source_peer: PeerId) -> Vec<PeerId>{
+        let peer_seqs = unwrap_result!(self.peer_seqs.lock());
+        Vec::from_iter(peer_seqs.keys().map(|k| *k).filter(|k| (*k != self.my_id && *k != source_peer)))
     }
 
     fn next_seq_num(&self) -> u32{
