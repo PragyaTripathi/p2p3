@@ -24,7 +24,7 @@ use ::maidsafe_utilities::event_sender::MaidSafeObserver as Observer;
 
 type Am<T> = Arc<Mutex<T>>;
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub enum MsgKind {
     Normal,
     Broadcast,
@@ -60,7 +60,7 @@ pub trait MessagePasserT{
     }
 
     fn send(&self, dst: PeerId, msg: String) -> Result<(), String>{
-        let msg = Message{
+        let msg = Message {
             source: self.get_id(),
             message: msg,
             kind: MsgKind::Normal,

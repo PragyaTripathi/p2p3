@@ -2,7 +2,7 @@ use std::sync::{Condvar, Mutex};
 use std::collections::VecDeque;
 
 pub struct AsyncQueue<T>{
-    queue: Mutex<VecDeque<T>>,
+    pub queue: Mutex<VecDeque<T>>,
     condvar: Condvar,
 }
 
