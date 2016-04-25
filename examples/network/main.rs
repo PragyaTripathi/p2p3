@@ -43,6 +43,9 @@ fn main() {
     print_usage();
     let (mp,_) = p2p3::network::MessagePasser::new();
     boot.update_config(mp.clone());
+    println!("###############################");
+    println!("My id is {:?}", mp.get_id());
+    println!("###############################");
     loop {
         print!("> ");
         assert!(io::stdout().flush().is_ok());

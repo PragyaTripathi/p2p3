@@ -49,7 +49,7 @@ pub struct PeerConnectionInfoResponse {
     responder_has_info: bool
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub struct Message {
     pub seq_num: u32,
     pub source: PeerId,
@@ -177,7 +177,9 @@ impl MessagePasser {
 
     pub fn prepare_connection_info(&self) -> u32{
         let mut token = unwrap_result!(self.conn_token.lock());
-        unwrap_result!(self.service.lock()).prepare_connection_info(*token);
+        {
+            unwrap_result!(self.service.lock()).prepare_connection_info(*token);
+        }
         let ret = *token;
         *token+=1;
         ret
@@ -266,7 +268,7 @@ impl MessagePasser {
                                 responder_has_info:true
                             };
                             let message_body = json::encode(&peer_info_response).unwrap();
-                            println!("sending {} to {}", message_body.clone(), response.bridge_id);
+                            println!("sending PeerConnectionInfoResponse to {:?}", response.bridge_id);
                             let msg = Message {
                                 source: mp.my_id,
                                 message: message_body,
@@ -284,7 +286,7 @@ impl MessagePasser {
                             Entry::Vacant(_) => 0 as u32,
                         };
                         // connect(our connection info, their connection info)
-                        println!("sending connect witn token {} ", token);
+                        println!("sending connect with token {} ", token);
                         mp.connect(token, response.info);
                     }
                 } else if self.my_id == response.bridge_id  {
@@ -330,6 +332,7 @@ impl MessagePasser {
         match event{
             // Invoked when a new message is received. Passes the message.
             Event::NewMessage(peer_id, bytes) => {
+                println!("Received a new message");
                 self.on_recv_msg(peer_id, bytes.clone());
             },
             // Result to the call of Service::prepare_contact_info.
@@ -350,14 +353,20 @@ impl MessagePasser {
             Event::BootstrapConnect(peer_id) => {
                 unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
                 println!("received BootstrapConnect with peerid: {}", peer_id);
-                let service = unwrap_result!(self.service.lock());
-                self.print_connected_nodes(&service);
+                {
+                    let service = unwrap_result!(self.service.lock());
+                    self.print_connected_nodes(&service);
+                }
             },
             Event::BootstrapAccept(peer_id) => {
-                unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
+                {
+                    unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
+                }
                 println!("received BootstrapAccept with peerid: {}", peer_id);
-                let service = unwrap_result!(self.service.lock());
-                self.print_connected_nodes(&service);
+                {
+                    let service = unwrap_result!(self.service.lock());
+                    self.print_connected_nodes(&service);
+                }
                 let request = PeerConnectionInfoRequest {
                     source_id: peer_id,
                     bridge_id: self.my_id
@@ -371,10 +380,14 @@ impl MessagePasser {
             },
             // The event happens when we use "connect" cmd.
             Event::NewPeer(Ok(()), peer_id) => {
-                unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
+                {
+                    unwrap_result!(self.peer_seqs.lock()).insert(peer_id, 0);
+                }
                 println!("peer connected {}", peer_id);
-                let service = unwrap_result!(self.service.lock());
-                self.print_connected_nodes(&service);
+                {
+                    let service = unwrap_result!(self.service.lock());
+                    self.print_connected_nodes(&service);
+                }
             },
             Event::LostPeer(peer_id) => {
                 unwrap_result!(self.peer_seqs.lock()).remove(&peer_id);
@@ -404,8 +417,11 @@ impl MessagePasser {
 
 impl MessagePasserT for MessagePasser {
     fn send_msg(&self, dst:PeerId, msg:Message) -> Result<(),String>{
+        // println!("destination: {:?} Message: {:?}",dst, msg);
         let bytes = encode(&msg, bincode::SizeLimit::Infinite).unwrap();
-        unwrap_result!(unwrap_result!(self.service.lock()).send(&dst, bytes));
+        {
+            unwrap_result!(unwrap_result!(self.service.lock()).send(&dst, bytes));
+        }
         Ok(())
     }
 
