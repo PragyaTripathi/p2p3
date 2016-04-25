@@ -1,3 +1,4 @@
+#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
 extern crate bincode;
 extern crate crust;
 extern crate core;
@@ -113,7 +114,7 @@ pub struct MessagePasser{
     conn_token: Am<u32>,
     conn_infos: Am<HashMap<u32,OurConnectionInfo>>,
     // temp_conn_infos intended to be used for full socket connection to store our connection infos sent for other peers
-    temp_conn_infos: Am<HashMap<PeerId,TheirConnectionInfo>>
+    temp_conn_infos: Am<HashMap<PeerId,u32>>
 }
 
 #[derive(Clone,Debug)]
@@ -220,41 +221,79 @@ impl MessagePasser {
                 self.recv_queue.enq(msg);
             },
             MsgKind::PeerConnectionInfoRequest => {
-                /*
-                Spawn new thread,
-            	prepare connection info
-            	Wait for connection info to be available
-            	Put connection_info in a map(sourceId, connection Info)
-            	Send peer_info_response(sourceId, bridge_id, my Id, new info, false)
-                */
+                println!("get PeerConnectionInfoRequest");
                 let request: PeerConnectionInfoRequest = json::decode(&msg.message).unwrap();
                 let mp = self.clone();
                 thread::Builder::new().spawn(move || {
                     let token = mp.prepare_connection_info();
                     let their_info = mp.wait_conn_info(token);
-                    let string_info = json::encode(&their_info).unwrap();
-                    let cloned_string = string_info.clone();
-                    let cloned_their_info: TheirConnectionInfo = json::decode(&cloned_string).unwrap();
                     let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
-                    conn_infos.insert(request.source_id.clone(), their_info);
+                    conn_infos.insert(request.source_id.clone(), token);
                     let peer_info_response = PeerConnectionInfoResponse {
                         destination_id: request.source_id.clone(),
                         bridge_id: request.bridge_id.clone(),
                         info_id: mp.my_id,
-                        info: cloned_their_info,
+                        info: their_info,
                         responder_has_info: false
                     };
                     let message_body = json::encode(&peer_info_response).unwrap();
+                    println!("Sending response {} to {}", message_body.clone(), request.bridge_id);
                     let msg = Message {
                         source: mp.my_id,
                         message: message_body,
                         kind: MsgKind::PeerConnectionInfoResponse,
                         seq_num: mp.next_seq_num()
                     };
-                    mp.send_msg(request.bridge_id, msg);
+                    mp.send_msg(request.bridge_id, msg).unwrap();
                 });
             },
             MsgKind::PeerConnectionInfoResponse => {
+                println!("Got PeerConnectionInfoResponse");
+                let response: PeerConnectionInfoResponse = json::decode(&msg.message).unwrap();
+                let mp = self.clone();
+                if self.my_id == response.destination_id {
+                    println!("MyId == response's dest id");
+                    if !response.responder_has_info {
+                        println!("responder does not have my info");
+                        thread::Builder::new().spawn(move || {
+                            let token = mp.prepare_connection_info();
+                            let their_info = mp.wait_conn_info(token);
+                            let peer_info_response = PeerConnectionInfoResponse {
+                                destination_id: response.info_id,
+                                bridge_id: response.bridge_id.clone(),
+                                info_id: mp.my_id,
+                                info: their_info,
+                                responder_has_info:true
+                            };
+                            let message_body = json::encode(&peer_info_response).unwrap();
+                            println!("sending {} to {}", message_body.clone(), response.bridge_id);
+                            let msg = Message {
+                                source: mp.my_id,
+                                message: message_body,
+                                kind: MsgKind::PeerConnectionInfoResponse,
+                                seq_num: mp.next_seq_num()
+                            };
+                            mp.send_msg(response.bridge_id, msg).unwrap();
+                        });
+                    } else {
+                        println!("responder has my info");
+                        // get our connection info from the map from our peer Id
+                        let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
+                        let token = match  conn_infos.entry(response.destination_id) {
+                            Entry::Occupied(e) => *(e.get()),
+                            Entry::Vacant(_) => 0 as u32,
+                        };
+                        // connect(our connection info, their connection info)
+                        println!("sending connect witn token {} ", token);
+                        mp.connect(token, response.info);
+                    }
+                } else if self.my_id == response.bridge_id  {
+                    println!("MyId != response's dest id relaying the message to {}", response.destination_id);
+                    println!("Dont forget! im the bridge");
+                    // relay message to the destination
+                    let msg_clone = msg.clone();
+                    mp.send_msg(response.destination_id, msg_clone).unwrap();
+                }
 
             },
             MsgKind::Broadcast =>{
@@ -319,6 +358,13 @@ impl MessagePasser {
                 println!("received BootstrapAccept with peerid: {}", peer_id);
                 let service = unwrap_result!(self.service.lock());
                 self.print_connected_nodes(&service);
+                let request = PeerConnectionInfoRequest {
+                    source_id: peer_id,
+                    bridge_id: self.my_id
+                };
+                let message_body = json::encode(&request).unwrap();
+                println!("Sending the request {} to everyone except {:?}", message_body, peer_id);
+                self.broadcast_from_bridge(message_body, MsgKind::PeerConnectionInfoRequest, peer_id);
             },
             Event::BootstrapFinished =>{
                 println!("Receieved BootstrapFinished");

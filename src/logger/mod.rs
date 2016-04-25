@@ -1,3 +1,5 @@
+#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
+
 use network::{Message,MsgKind};
 use async_queue::AsyncQueue;
 use std::sync::Arc;

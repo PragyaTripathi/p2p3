@@ -1,4 +1,5 @@
-#![allow(dead_code,unused_variables,unused_imports)]
+#![allow(dead_code,unused_variables,unused_imports, unused_mut)]
+
 use super::static_site::site_singleton;
 use rustc_serialize::json;
 use super::char_id::create_char_id;
@@ -44,11 +45,11 @@ pub fn run(site_id: u32) {
 fn test_run() {
     let char_id_1 = create_char_id(1, 0);
     let char_id_2 = create_char_id(2, 0);
-    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
-    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending); // From site 2
+    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
+    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending); // From site 2
     let operation1 = Operation::Insert{w_char: wchar1.clone(), from_site: 1};
     let operation2 = Operation::Insert{w_char: wchar2.clone(), from_site: 1};
-    let mut static_site = site_singleton(0);
+    let static_site = site_singleton(0);
     {
         let site = static_site.inner.clone();
         let mut site = site.lock().unwrap();
@@ -61,7 +62,7 @@ fn test_run() {
     run(0);
     {
         let site = static_site.inner.clone();
-        let mut site = site.lock().unwrap();
+        let site = site.lock().unwrap();
         assert_eq!(site.pool.len(), 0);
     }
 }
