@@ -64,6 +64,7 @@ pub trait MessagePasserT{
     fn try_recv_msg(&self) -> Result<Option<Message>, String>;
     fn next_seq_num(&self) -> u32;
     fn get_id(&self) -> PeerId;
+    fn peer_exists(&self, peer_id: PeerId) -> bool;
     fn peers(&self) -> Vec<PeerId>;
     fn peers_to_bridge(&self, source_peer: PeerId) -> Vec<PeerId>;
 
@@ -87,6 +88,7 @@ pub trait MessagePasserT{
             seq_num: self.next_seq_num()
         };
         for peer in self.peers_to_bridge(source_peer) {
+            println!("Sending new peer connection alert tp {:?}", peer.clone());
             unwrap_result!(self.send_msg(peer, msg.clone()));
         }
         Ok(())
@@ -136,7 +138,7 @@ impl MessagePasser {
 
         let mut service = unwrap_result!(Service::new(nw_sender));
         unwrap_result!(service.start_listening_tcp());
-        unwrap_result!(service.start_listening_utp());
+        // unwrap_result!(service.start_listening_utp());
 
         // Enable listening and responding to peers searching for us.
         service.start_service_discovery();
@@ -176,13 +178,13 @@ impl MessagePasser {
     }
 
     pub fn prepare_connection_info(&self) -> u32{
-        let mut token = unwrap_result!(self.conn_token.lock());
+        let conn_token_clone = self.conn_token.clone();
+        let mut token = conn_token_clone.lock().unwrap();
+        *token += 1;
         {
             unwrap_result!(self.service.lock()).prepare_connection_info(*token);
         }
-        let ret = *token;
-        *token+=1;
-        ret
+        *token
     }
 
     pub fn wait_conn_info(&self, tok: u32) -> TheirConnectionInfo{
@@ -223,30 +225,35 @@ impl MessagePasser {
                 self.recv_queue.enq(msg);
             },
             MsgKind::PeerConnectionInfoRequest => {
-                println!("get PeerConnectionInfoRequest");
                 let request: PeerConnectionInfoRequest = json::decode(&msg.message).unwrap();
+                println!("Got PeerConnectionInfoRequest from {:?} for {:?}", request.bridge_id, request.source_id);
+                if self.peer_exists(request.source_id.clone()) {
+                    println!("Connection already exists for {:?}", request.source_id.clone());
+                    return;
+                }
                 let mp = self.clone();
+                let request_clone = request.clone();
                 thread::Builder::new().spawn(move || {
                     let token = mp.prepare_connection_info();
                     let their_info = mp.wait_conn_info(token);
                     let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
                     conn_infos.insert(request.source_id.clone(), token);
                     let peer_info_response = PeerConnectionInfoResponse {
-                        destination_id: request.source_id.clone(),
-                        bridge_id: request.bridge_id.clone(),
+                        destination_id: request_clone.source_id.clone(),
+                        bridge_id: request_clone.bridge_id.clone(),
                         info_id: mp.my_id,
                         info: their_info,
                         responder_has_info: false
                     };
                     let message_body = json::encode(&peer_info_response).unwrap();
-                    println!("Sending response {} to {}", message_body.clone(), request.bridge_id);
+                    println!("Sending response to {}", request_clone.bridge_id);
                     let msg = Message {
                         source: mp.my_id,
                         message: message_body,
                         kind: MsgKind::PeerConnectionInfoResponse,
                         seq_num: mp.next_seq_num()
                     };
-                    mp.send_msg(request.bridge_id, msg).unwrap();
+                    mp.send_msg(request_clone.bridge_id, msg).unwrap();
                 });
             },
             MsgKind::PeerConnectionInfoResponse => {
@@ -276,6 +283,8 @@ impl MessagePasser {
                                 seq_num: mp.next_seq_num()
                             };
                             mp.send_msg(response.bridge_id, msg).unwrap();
+                            println!("sending connect with token {} ", token.clone());
+                            mp.connect(token, response.info);
                         });
                     } else {
                         println!("responder has my info");
@@ -283,14 +292,14 @@ impl MessagePasser {
                         let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
                         let token = match  conn_infos.entry(response.destination_id) {
                             Entry::Occupied(e) => *(e.get()),
-                            Entry::Vacant(_) => 0 as u32,
+                            Entry::Vacant(_) => 1 as u32,
                         };
                         // connect(our connection info, their connection info)
                         println!("sending connect with token {} ", token);
                         mp.connect(token, response.info);
                     }
                 } else if self.my_id == response.bridge_id  {
-                    println!("MyId != response's dest id relaying the message to {}", response.destination_id);
+                    println!("MyId != response's dest id relaying the message");
                     println!("Dont forget! im the bridge");
                     // relay message to the destination
                     let msg_clone = msg.clone();
@@ -372,7 +381,7 @@ impl MessagePasser {
                     bridge_id: self.my_id
                 };
                 let message_body = json::encode(&request).unwrap();
-                println!("Sending the request {} to everyone except {:?}", message_body, peer_id);
+                println!("Sending the request to everyone except myself and {:?}", peer_id);
                 self.broadcast_from_bridge(message_body, MsgKind::PeerConnectionInfoRequest, peer_id);
             },
             Event::BootstrapFinished =>{
@@ -435,6 +444,12 @@ impl MessagePasserT for MessagePasser {
 
     fn get_id(&self) -> PeerId {
         self.my_id
+    }
+
+    // Used to check existing peer id
+    fn peer_exists(&self, peer_id: PeerId) -> bool {
+        let mut peer_seqs = unwrap_result!(self.peer_seqs.lock());
+        peer_seqs.contains_key(&peer_id)
     }
 
     fn peers(&self) -> Vec<PeerId>{
