@@ -1,4 +1,4 @@
-#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
+#![allow(dead_code,unused_variables,unused_imports,unused_must_use, unused_mut, unused_assignments)]
 extern crate bincode;
 extern crate crust;
 extern crate core;

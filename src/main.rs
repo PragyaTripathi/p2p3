@@ -83,15 +83,6 @@ fn main() {
         let mut values = globals.lock().unwrap();
         values.init(site_id, port_number, p2p3_url.clone(), git_access.clone());
     }
-
-    println!("Starting bootstrap");
-    let boot = BootstrapHandler::bootstrap_load();
-    let (mp,_) = MessagePasser::new();
-    boot.update_config(mp.clone());
-    println!("###############################");
-    println!("My id is {:?}", mp.get_id());
-    println!("###############################");
-
     if matches.free.len() > 0 {
         print_usage(&program, opts);
         return;
@@ -103,6 +94,15 @@ fn main() {
             println!("The folder already exits");
         },
     };
+
+    println!("Starting bootstrap");
+    let boot = BootstrapHandler::bootstrap_load();
+    let (mp,_) = MessagePasser::new();
+    boot.update_config(mp.clone());
+    println!("###############################");
+    println!("My id is {:?}", mp.get_id());
+    println!("###############################");
+
 
     let permission_level = get_permission_level(&git_access);
     match permission_level {
