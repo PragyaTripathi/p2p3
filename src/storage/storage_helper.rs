@@ -21,12 +21,23 @@ pub struct GitAccess {
 
 impl GitAccess {
     pub fn new(repo: String, local_path: String, file_path: String, usern: String, passwd: String) -> GitAccess {
-        GitAccess{
+        GitAccess {
             repo_url: repo,
             local_url: local_path,
             file_url: file_path,
             username: usern,
-            password: passwd}
+            password: passwd
+        }
+    }
+
+    pub fn default() -> GitAccess {
+        GitAccess {
+            repo_url: String::new(),
+            local_url: String::new(),
+            file_url: String::new(),
+            username: String::new(),
+            password: String::new()
+        }
     }
 
     pub fn clone_repo(&self) -> Result<(), git2::Error> {

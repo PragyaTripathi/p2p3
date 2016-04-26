@@ -12,7 +12,7 @@ use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use rustc_serialize::json::as_pretty_json;
 use super::MessagePasser;
-
+use utils::p2p3_globals;
 
 #[derive(PartialEq, Eq, Debug, RustcDecodable, RustcEncodable, Clone)]
 pub struct Config {
@@ -46,45 +46,31 @@ impl Default for Config {
 #[derive(Clone)]
 pub struct BootstrapHandler {
     pub config: Config,
-    pub git: GitAccess,
-    pub file_name: String
+    pub full_path: String
 }
 
 impl BootstrapHandler {
-    pub fn bootstrap_load(git: GitAccess) -> BootstrapHandler{
+    pub fn bootstrap_load() -> BootstrapHandler{
         // Load the p2p3 config file in the same directory of the working file.
-        let p2p3_file_name: String = get_p2p3_config(&git.file_url);
-        let p2p3_file_url = git.local_url.clone() + &p2p3_file_name;
-        let mut p2p3_file = File::open(p2p3_file_url).unwrap();
+        let mut git_local_url = String::new();
+        {
+            let globals = p2p3_globals().inner.clone();
+            let mut values = globals.lock().unwrap();
+            git_local_url = values.get_git_access().local_url.clone();
+        }
+
+        let p2p3_file_name = String::from("config.p2p3");
+        let p2p3_file_url = git_local_url + &p2p3_file_name;
+        let mut p2p3_file = File::open(p2p3_file_url.clone()).unwrap();
         let mut file_str = String::new();
         p2p3_file.read_to_string(&mut file_str).unwrap();
-
-        // Get the crust config file path
-        let file_name = get_crust_config().unwrap().into_string().unwrap();
-        let path_str = "target/debug/".to_string() + &file_name; // "target/debug/" in stead of "/target/debug/"
-
-        // Store the crust config file in the path
-        let path = Path::new(&path_str);
-        let mut crust_config_path = File::create(path.clone()).unwrap();
-        let file_byte = file_str.clone().into_bytes();
-        crust_config_path.write_all(&file_byte).unwrap();
-
-        /*
-         *  If we run it from "cargo run --example network_reorg", it will read the config file from another path.
-         *  So I create another file in that path in order for running the example.
-         */
-        let path_str_1 = "target/debug/examples/".to_string() + &file_name;
-        let path_1 = Path::new(&path_str_1);
-        let mut crust_config_example_path = File::create(path_1.clone()).unwrap();
-        crust_config_example_path.write_all(&file_byte).unwrap();
 
         // Construct the Config object.
         let conf: Config = json::decode(&file_str).unwrap();
 
         BootstrapHandler {
             config: conf,
-            git: git,
-            file_name: p2p3_file_name
+            full_path: p2p3_file_url,
         }
     }
 
@@ -115,21 +101,28 @@ impl BootstrapHandler {
         let update_str = as_pretty_json(&boot_clone.config);
         let pretty_json_str = update_str.to_string();
 
+        let mut git_access = GitAccess::default();
+        {
+            let globals = p2p3_globals().inner.clone();
+            let mut values = globals.lock().unwrap();
+            git_access = values.get_git_access();
+        }
+
         // Get the p2p3 config file path and store the new config infomation it in that path.
-        let path_str = self.git.local_url.clone() + &self.file_name;
+        let path_str = &self.full_path;
         let path = Path::new(&path_str);
         let mut file = File::create(path.clone()).unwrap();
         let file_byte = pretty_json_str.into_bytes();
         file.write_all(&file_byte).unwrap();
 
-        match self.git.commit_config("Update config file.", &self.file_name) {
+        match git_access.commit_config("Update config file.", &self.full_path) {
             Ok(()) => (),
             Err(e) => {
                 println!("Commit error: {}", e);
             }
         }
 
-        match self.git.push() {
+        match git_access.push() {
             Ok(()) => (),
             Err(e) => {
                 println!("Push error: {}", e);

@@ -33,6 +33,8 @@ use permission::permissions_handler::PermissionLevel;
 use compile::{CompileMode, run_code};
 use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 use utils::p2p3_globals;
+use network::{MessagePasser, MessagePasserT};
+use network::bootstrap::BootstrapHandler;
 use std::io::stdin;
 use std::fs::File;
 use std::io::prelude::*;
@@ -81,6 +83,14 @@ fn main() {
         let mut values = globals.lock().unwrap();
         values.init(site_id, port_number, p2p3_url.clone(), git_access.clone());
     }
+
+    println!("Starting bootstrap");
+    let boot = BootstrapHandler::bootstrap_load();
+    let (mp,_) = MessagePasser::new();
+    boot.update_config(mp.clone());
+    println!("###############################");
+    println!("My id is {:?}", mp.get_id());
+    println!("###############################");
 
     if matches.free.len() > 0 {
         print_usage(&program, opts);
