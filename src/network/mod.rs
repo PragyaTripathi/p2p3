@@ -236,8 +236,14 @@ impl MessagePasser {
                 thread::Builder::new().spawn(move || {
                     let token = mp.prepare_connection_info();
                     let their_info = mp.wait_conn_info(token);
-                    let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
-                    conn_infos.insert(request.source_id.clone(), token);
+                    {
+                        let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
+                        if conn_infos.contains_key(&request.source_id.clone()) {
+                            println!("Temp connection for {:?} already exists", request.source_id.clone());
+                            return;
+                        }
+                        (*conn_infos).insert(request.source_id.clone(), token);
+                    }
                     let peer_info_response = PeerConnectionInfoResponse {
                         destination_id: request_clone.source_id.clone(),
                         bridge_id: request_clone.bridge_id.clone(),
@@ -267,8 +273,16 @@ impl MessagePasser {
                         thread::Builder::new().spawn(move || {
                             let token = mp.prepare_connection_info();
                             let their_info = mp.wait_conn_info(token);
+                            {
+                                let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
+                                if conn_infos.contains_key(&response.info_id.clone()) {
+                                    println!("Temp connection for {:?} already exists", response.info_id.clone());
+                                    return;
+                                }
+                                (*conn_infos).insert(response.info_id.clone(), token);
+                            }
                             let peer_info_response = PeerConnectionInfoResponse {
-                                destination_id: response.info_id,
+                                destination_id: response.info_id.clone(),
                                 bridge_id: response.bridge_id.clone(),
                                 info_id: mp.my_id,
                                 info: their_info,
@@ -283,20 +297,30 @@ impl MessagePasser {
                                 seq_num: mp.next_seq_num()
                             };
                             mp.send_msg(response.bridge_id, msg).unwrap();
-                            println!("sending connect with token {} ", token.clone());
-                            mp.connect(token, response.info);
+                            if mp.peer_exists(response.info_id.clone()) {
+                                println!("Connection already exists with {:?}", response.info_id);
+                            } else {
+                                println!("sending connect with token {} ", token.clone());
+                                mp.connect(token, response.info);
+                            }
                         });
                     } else {
                         println!("responder has my info");
                         // get our connection info from the map from our peer Id
-                        let mut conn_infos = unwrap_result!(mp.temp_conn_infos.lock());
-                        let token = match  conn_infos.entry(response.destination_id) {
-                            Entry::Occupied(e) => *(e.get()),
-                            Entry::Vacant(_) => 1 as u32,
+                        let mut conn_infos = unwrap_result!(self.temp_conn_infos.lock());
+                        println!("Length of temp conn infos {}", conn_infos.len());
+                        match conn_infos.entry(response.info_id.clone()) {
+                            Entry::Occupied(e) => {
+                                let token = *(e.get());
+                                if self.peer_exists(response.info_id.clone()) {
+                                    println!("Connection already exists with {:?}", response.info_id);
+                                } else {
+                                    println!("sending connect with token {} ", token.clone());
+                                    self.connect(token, response.info);
+                                }
+                            },
+                            Entry::Vacant(_) => {},
                         };
-                        // connect(our connection info, their connection info)
-                        println!("sending connect with token {} ", token);
-                        mp.connect(token, response.info);
                     }
                 } else if self.my_id == response.bridge_id  {
                     println!("MyId != response's dest id relaying the message");
@@ -305,7 +329,6 @@ impl MessagePasser {
                     let msg_clone = msg.clone();
                     mp.send_msg(response.destination_id, msg_clone).unwrap();
                 }
-
             },
             MsgKind::Broadcast =>{
                 if msg.source == self.my_id {
