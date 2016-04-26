@@ -74,7 +74,7 @@ fn main() {
     let port_number = port.parse::<u16>().unwrap();
     let local_path = matches.opt_str("f").unwrap();
     let p = env::current_dir().unwrap();
-    let p2p3_url = format!("file://{}/front-end/index.html",p.display());
+    let p2p3_url = format!("file://{}/front-end/index.html?port={}",p.display(), port_number);
     let file_path = "c_code.c";
     let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
 

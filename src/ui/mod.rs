@@ -17,7 +17,7 @@ pub fn open_url(url: &str) -> IoRes<Child> {
         ("open", vec!["-g"])
     } else if cfg!(target_os = "windows") {
         // `start` requires an empty string as its first parameter.
-        ("cmd", vec!["/c","start"])
+        ("cmd", vec!["/c","start","chrome"])
     } else {
         panic!("unsupported OS")
     };
@@ -27,6 +27,7 @@ pub fn open_url(url: &str) -> IoRes<Child> {
 fn open_specific(url: &str, browser: &str, browser_args: &[&str]) -> IoRes<Child> {
     use std::process::Command;
     let url = Url::parse(url).unwrap();
+    println!("url string: {}", url.to_string());
     print!("starting process '{}' with url {:?}\n", browser, url);
 
     Command::new(browser)
@@ -37,7 +38,7 @@ fn open_specific(url: &str, browser: &str, browser_args: &[&str]) -> IoRes<Child
         .spawn()
 }
 
-#[derive(Clone,RustcDecodable,RustcEncodable)]
+#[derive(Clone,RustcDecodable,RustcEncodable, Debug)]
 pub enum Command{
     InsertString(usize, String),
     InsertChar(usize, char),
@@ -46,7 +47,7 @@ pub enum Command{
     Commit,
     Compile,
     DisableEditing(String),
-    Mode(String),    
+    Mode(String),
 }
 
 pub type FnCommand = Box<Fn(&Command)->Res<String, String> + Send + Sync>;
@@ -128,7 +129,9 @@ impl UiHandler{
                          share: UiHandler{
                              listeners: Arc::new(Mutex::new(vec!())),
                              tx: cmdtx.clone() } };
+                     println!("Sending");
                      tx.send(ui.share.clone()).unwrap();
+                     println!("After send");
                      ui
                  }).unwrap();
         });
@@ -144,7 +147,9 @@ impl UiHandler{
 
     #[allow(dead_code)]
     pub fn send_command(&self, cmd: Command){
+        println!("Send Command {:?}", cmd.clone());
         self.tx.send(cmd).unwrap();
+        println!("Sent command");
     }
 }
 

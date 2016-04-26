@@ -46,6 +46,7 @@ impl Default for Config {
 #[derive(Clone)]
 pub struct BootstrapHandler {
     pub config: Config,
+    pub config_file: String,
     pub full_path: String
 }
 
@@ -60,7 +61,8 @@ impl BootstrapHandler {
         }
 
         let p2p3_file_name = String::from("config.p2p3");
-        let p2p3_file_url = git_local_url + &p2p3_file_name;
+        let p2p3_file_url = git_local_url.clone() + &p2p3_file_name;
+        println!("git_local_url: {} p2p3_file_url: {}", git_local_url, p2p3_file_url.clone());
         let mut p2p3_file = File::open(p2p3_file_url.clone()).unwrap();
         let mut file_str = String::new();
         p2p3_file.read_to_string(&mut file_str).unwrap();
@@ -70,6 +72,7 @@ impl BootstrapHandler {
 
         BootstrapHandler {
             config: conf,
+            config_file: p2p3_file_name,
             full_path: p2p3_file_url,
         }
     }
@@ -115,7 +118,8 @@ impl BootstrapHandler {
         let file_byte = pretty_json_str.into_bytes();
         file.write_all(&file_byte).unwrap();
 
-        match git_access.commit_config("Update config file.", &self.full_path) {
+        println!("commiting {} ", &self.config_file);
+        match git_access.commit_config("Update config file.", &self.config_file) {
             Ok(()) => (),
             Err(e) => {
                 println!("Commit error: {}", e);
