@@ -1,12 +1,13 @@
 #![allow(dead_code,unused_variables,unused_imports)]
 
 use std::cmp::Ordering;
+use super::crust::PeerId;
 
 #[derive(Clone,PartialEq,Debug,RustcDecodable, RustcEncodable)]
 pub enum CharId {
     Beginning,
     Ending,
-    Regular {site_id: u32, unique_id: u32},// UniqueId is the logicalClock value at the time of creation
+    Regular {site_id: PeerId, unique_id: u32},// UniqueId is the logicalClock value at the time of creation
 }
 
 impl PartialOrd<CharId> for CharId {
@@ -59,7 +60,7 @@ impl PartialOrd<CharId> for CharId {
     }
 }
 
-pub fn create_char_id(site_id: u32, unique_id: u32) -> CharId {
+pub fn create_char_id(site_id: PeerId, unique_id: u32) -> CharId {
     CharId::Regular {site_id: site_id, unique_id: unique_id}
 }
 
@@ -67,18 +68,13 @@ pub fn create_char_id(site_id: u32, unique_id: u32) -> CharId {
 fn test_id_comparison() {
     let char_id_beg = CharId::Beginning;
     let char_id_end = CharId::Ending;
-    let char_id_1 = create_char_id(0, 0);
-    let char_id_2 = create_char_id(1, 0);
-    let char_id_3 = create_char_id(0, 1);
-    let char_id_4 = create_char_id(1, 1);
-    let char_id_5 = create_char_id(0, 5);
+    let id1: PeerId = super::rand::random();
+    let id2: PeerId = super::rand::random();
+    let char_id_1 = create_char_id(id1, 0);
+    let char_id_2 = create_char_id(id2, 1);
     assert_eq!(char_id_beg < char_id_end, true);
     assert_eq!(char_id_end < char_id_beg, false);
     assert_eq!(char_id_1 < char_id_2, true);
-    assert_eq!(char_id_2 < char_id_3, false);
-    assert_eq!(char_id_5 < char_id_end, true);
-    assert_eq!(char_id_beg < char_id_5, true);
-    assert_eq!(char_id_2 < char_id_4, true);
-    assert_eq!(char_id_5 < char_id_2, true);
-
+    assert_eq!(char_id_1 < char_id_end, true);
+    assert_eq!(char_id_beg < char_id_1, true);
 }

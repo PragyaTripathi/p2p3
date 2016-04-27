@@ -1,8 +1,11 @@
 #![allow(dead_code,unused_variables,unused_imports)]
 
 extern crate rustc_serialize;
-use rustc_serialize::json;
+
+use self::rustc_serialize::json;
 use std::collections::VecDeque;
+use super::crust::PeerId;
+use super::rand::random;
 use super::clock::Clock;
 use super::sequence::Sequence;
 use super::operation::Operation;
@@ -14,14 +17,14 @@ use utils::p2p3_globals;
 
 #[derive(Clone)]
 pub struct Site {
-    site_id: u32,
+    site_id: PeerId,
     logical_clock: Clock,
     sequence: Sequence,
     pub pool: VecDeque<Operation>,
 }
 
 impl Site {
-    pub fn new(id: u32) -> Site {
+    pub fn new(id: PeerId) -> Site {
         Site {site_id: id, logical_clock: Clock::new(), sequence: Sequence::new(), pool: VecDeque::default()}
     }
 
@@ -139,7 +142,8 @@ impl Site {
 
 #[test]
 fn test_generate_insert() {
-    let mut site = Site::new(1);
+    let id1: PeerId = random();
+    let mut site = Site::new(id1);
     site.generate_insert(0, 'H', false);
     let val = "H";
     assert_eq!(site.content(), val);
@@ -147,7 +151,8 @@ fn test_generate_insert() {
 
 #[test]
 fn test_generate_del() {
-    let mut site = Site::new(1);
+    let id1: PeerId = random();
+    let mut site = Site::new(id1);
     site.generate_insert(0, 'A', false);
     site.generate_insert(1, 'P', false);
     site.generate_insert(2, 'R', false);
@@ -171,14 +176,17 @@ fn test_generate_del() {
 
 #[test]
 fn test_operation() {
-    let mut site = Site::new(1);
-    let mut site2 = Site::new(2);
-    let mut site3 = Site::new(3);
-    let char_id_1 = create_char_id(1, 0);
-    let char_id_2 = create_char_id(2, 0);
-    let char_id_3 = create_char_id(1, 1);
-    let char_id_4 = create_char_id(3, 0);
-    let char_id_5 = create_char_id(2, 1);
+    let id1: PeerId = random();
+    let id2: PeerId = random();
+    let id3: PeerId = random();
+    let mut site = Site::new(id1.clone());
+    let mut site2 = Site::new(id2.clone());
+    let mut site3 = Site::new(id3.clone());
+    let char_id_1 = create_char_id(id1.clone(), 0);
+    let char_id_2 = create_char_id(id2.clone(), 0);
+    let char_id_3 = create_char_id(id1.clone(), 1);
+    let char_id_4 = create_char_id(id3.clone(), 0);
+    let char_id_5 = create_char_id(id2.clone(), 1);
     let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
     let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', CharId::Beginning, CharId::Ending); // From site 2
     let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_1.clone(), CharId::Ending); // From site 1
@@ -186,32 +194,33 @@ fn test_operation() {
     let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', char_id_2.clone(), CharId::Ending); // From site 2
     site.sequence.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
     println!("Implementing insert operation from site 1");
-    site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: 1});
+    site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: id1.clone()});
     assert_eq!(site2.content(), site.content());
     println!("Implementing site 2 insert operation");
     site2.sequence.integrate_ins(wchar2.clone(), CharId::Beginning, CharId::Ending);
-    site.implement_operation(Operation::Insert{w_char: wchar2.clone(), from_site: 2});
+    site.implement_operation(Operation::Insert{w_char: wchar2.clone(), from_site: id2.clone()});
     assert_eq!(site2.content(), site.content());
     println!("Implementing site 1 insert operation");
-    site2.implement_operation(Operation::Insert{w_char: wchar3.clone(), from_site: 1});
+    site2.implement_operation(Operation::Insert{w_char: wchar3.clone(), from_site: id1.clone()});
     site.sequence.integrate_ins(wchar3.clone(), char_id_1.clone(), CharId::Ending);
     assert_eq!(site2.content(), site.content());
     println!("Implementing site 3 insert operation");
-    site2.implement_operation(Operation::Insert{w_char: wchar4.clone(), from_site: 3});
+    site2.implement_operation(Operation::Insert{w_char: wchar4.clone(), from_site: id3.clone()});
     site.sequence.integrate_ins(wchar4.clone(), CharId::Beginning, CharId::Ending);
     assert_eq!(site2.content(), site.content());
     println!("Implementing site 1 delete operation");
-    site2.implement_operation(Operation::Delete{w_char: wchar1.clone(), from_site: 1});
+    site2.implement_operation(Operation::Delete{w_char: wchar1.clone(), from_site: id1.clone()});
     site.sequence.integrate_del(&wchar1.clone());
     assert_eq!(site2.content(), site.content());
-    site2.implement_operation(Operation::Insert{w_char: wchar5.clone(), from_site: 1});
+    site2.implement_operation(Operation::Insert{w_char: wchar5.clone(), from_site: id1.clone()});
     site.sequence.integrate_ins(wchar5.clone(), char_id_2.clone(), CharId::Ending);
     assert_eq!(site2.content(), site.content());
 }
 
 #[test]
 fn test_site() {
-    let mut site = Site::new(1);
+    let id1: PeerId = random();
+    let mut site = Site::new(id1);
     let file_contents = "fn main() { \n println!(\"Hello, P2P3!\"); \n }";
     site.parse_given_string(file_contents);
     let value = site.content();

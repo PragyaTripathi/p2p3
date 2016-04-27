@@ -1,3 +1,5 @@
+extern crate crust;
+extern crate rand;
 pub mod site;
 pub mod woot_char;
 pub mod char_id;

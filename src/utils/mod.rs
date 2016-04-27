@@ -1,7 +1,11 @@
+extern crate crust;
+extern crate rand;
 use std::sync::{Arc, Mutex, Once, ONCE_INIT};
 use std::mem;
 use storage::storage_helper::GitAccess;
 use compile::CompileMode;
+use self::crust::PeerId;
+use self::rand::random;
 
 #[derive(Clone)]
 pub struct P2P3Globals {
@@ -10,7 +14,7 @@ pub struct P2P3Globals {
 
 #[derive(Clone)]
 pub struct P2P3Values {
-    site_id: u32,
+    site_id: PeerId,
     port: u16,
     url: String,
     git_access: GitAccess,
@@ -18,7 +22,7 @@ pub struct P2P3Values {
 }
 
 impl P2P3Values {
-    pub fn init(&mut self, site_id: u32, port: u16, url: String, git_access: GitAccess) {
+    pub fn init(&mut self, site_id: PeerId, port: u16, url: String, git_access: GitAccess) {
         self.site_id = site_id;
         self.port = port;
         self.url = url;
@@ -26,8 +30,12 @@ impl P2P3Values {
         self.mode = CompileMode::None;
     }
 
-    pub fn get_site_id(&self) -> u32 {
-        self.site_id
+    pub fn get_site_id(&self) -> PeerId {
+        self.site_id.clone()
+    }
+
+    pub fn set_site_id(&mut self, peer_id: PeerId) {
+        self.site_id = peer_id;
     }
 
     pub fn get_port(&self) -> u16 {
@@ -60,8 +68,9 @@ pub fn p2p3_globals() -> P2P3Globals {
     unsafe {
         ONCE.call_once(|| {
             // Make it
+            let id: PeerId = random();
             let globals = P2P3Values {
-                site_id: 0,
+                site_id: id,
                 port: 8080,
                 url: String::new(),
                 git_access: GitAccess::default(),

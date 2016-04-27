@@ -26,6 +26,8 @@ use rustc_serialize::json;
 use p2p3::network::bootstrap::BootstrapHandler;
 use p2p3::storage::storage_helper::GitAccess;
 use std::str::FromStr;
+use self::crust::PeerId;
+use self::rand::random;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -50,8 +52,6 @@ fn main() {
     let git_url = matches.opt_str("u").unwrap();
     let git_username = matches.opt_str("n").unwrap();
     let git_password = matches.opt_str("p").unwrap();
-    let site_id_str = matches.opt_str("s").unwrap();
-    let site_id = site_id_str.parse::<u32>().unwrap();
     let port = matches.opt_str("d").unwrap();
     let port_number = port.parse::<u16>().unwrap();
     let local_path = matches.opt_str("f").unwrap();
@@ -61,15 +61,11 @@ fn main() {
     let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
 
     {
+        let id: PeerId = random();
         let globals = p2p3_globals().inner.clone();
         let mut values = globals.lock().unwrap();
-        values.init(site_id, port_number, p2p3_url.clone(), git_access.clone());
+        values.init(id, port_number, p2p3_url.clone(), git_access.clone());
     }
-    if matches.free.len() > 0 {
-        print_usage();
-        return;
-    };
-    let static_site = site_singleton(site_id);
     match git_access.clone_repo() {
         Ok(()) => {},
         Err(e) => {
@@ -84,6 +80,12 @@ fn main() {
     println!("###############################");
     println!("My id is {:?}", mp.get_id());
     println!("###############################");
+
+    if matches.free.len() > 0 {
+        print_usage();
+        return;
+    };
+    let static_site = site_singleton(mp.get_id());
 
     // Get the four parameters from the front-end.
     // let repo_url: String = "https://github.com/KajoAyame/p2p3_test.git".to_string();

@@ -39,6 +39,8 @@ use std::io::stdin;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use self::crust::PeerId;
+use self::rand::random;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -65,29 +67,27 @@ fn main() {
         print_usage(&program, opts);
         return;
     };
-    let git_url = matches.opt_str("u").unwrap();
-    let git_username = matches.opt_str("n").unwrap();
-    let git_password = matches.opt_str("p").unwrap();
-    let site_id_str = matches.opt_str("s").unwrap();
-    let site_id = site_id_str.parse::<u32>().unwrap();
-    let port = matches.opt_str("d").unwrap();
-    let port_number = port.parse::<u16>().unwrap();
-    let local_path = matches.opt_str("f").unwrap();
-    let p = env::current_dir().unwrap();
-    let p2p3_url = format!("file://{}/front-end/index.html?port={}",p.display(), port_number);
-    let file_path = "c_code.c";
-    let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
-
-    {
-        let globals = p2p3_globals().inner.clone();
-        let mut values = globals.lock().unwrap();
-        values.init(site_id, port_number, p2p3_url.clone(), git_access.clone());
-    }
     if matches.free.len() > 0 {
         print_usage(&program, opts);
         return;
     };
-    let static_site = site_singleton(site_id);
+
+    let git_url = matches.opt_str("u").unwrap();
+    let git_username = matches.opt_str("n").unwrap();
+    let git_password = matches.opt_str("p").unwrap();
+    let port = matches.opt_str("d").unwrap();
+    let port_number = port.parse::<u16>().unwrap();
+    let local_path = matches.opt_str("f").unwrap();
+    let p = env::current_dir().unwrap();
+    let p2p3_url = format!("file://{}/front-end/index.html?port={}", p.display(), port_number);
+    let file_path = "c_code.c";
+    let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
+    {
+        let id: PeerId = random();
+        let globals = p2p3_globals().inner.clone();
+        let mut values = globals.lock().unwrap();
+        values.init(id, port_number, p2p3_url.clone(), git_access.clone());
+    }
     match git_access.clone_repo() {
         Ok(()) => {},
         Err(e) => {
@@ -104,20 +104,24 @@ fn main() {
     println!("###############################");
 
 
+    let static_site = site_singleton(mp.get_id());
+
     let permission_level = get_permission_level(&git_access);
     match permission_level {
         PermissionLevel::Editor => println!("The user is an editor"),
         PermissionLevel::Viewer => println!("The user is a viewer"),
     };
-    let operation_thread = thread::spawn(move || {
-        run(site_id);
-    });
+
     let file_name = &(local_path+file_path);
+    let message_passer = mp.clone();
     {
         let initial_file_content = read_file(file_name);
         let site_clone = static_site.inner.clone();
         let mut site = site_clone.lock().unwrap();
         site.parse_given_string(&initial_file_content);
+        let globals = p2p3_globals().inner.clone();
+        let mut values = globals.lock().unwrap();
+        values.set_site_id(message_passer.get_id());
     }
 
     let static_ui = static_ui_handler(port_number, p2p3_url.clone(), mp.clone());

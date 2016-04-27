@@ -4,13 +4,14 @@ use std::sync::{Arc,Mutex,Once,ONCE_INIT,Condvar};
 use std::{mem,thread,env};
 use super::site::Site;
 use super::operation::Operation;
+use super::crust::PeerId;
 
 #[derive(Clone)]
 pub struct StaticSite {
     pub inner: Arc<Mutex<Site>>
 }
 
-pub fn site_singleton(site_id: u32) -> StaticSite {
+pub fn site_singleton(site_id: PeerId) -> StaticSite {
     // Initialize it to a null value
     static mut SINGLETON: *const StaticSite = 0 as *const StaticSite;
     static ONCE: Once = ONCE_INIT;

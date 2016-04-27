@@ -1,7 +1,8 @@
 #![allow(dead_code,unused_variables,unused_imports)]
+use super::crust::PeerId;
+use super::rand::random;
+use super::char_id::{create_char_id, CharId};
 use super::woot_char::WootChar;
-use super::char_id::CharId;
-use super::char_id::create_char_id;
 
 #[derive(Clone)]
 pub struct Sequence{
@@ -205,16 +206,17 @@ impl Sequence {
 #[test]
 fn test_visible_index_of_id() {
     let mut seq = Sequence::new();
-    let char_id_1 = create_char_id(1, 0);
-    let char_id_2 = create_char_id(1, 1);
-    let char_id_3 = create_char_id(1, 2);
-    let char_id_4 = create_char_id(1, 3);
-    let char_id_5 = create_char_id(1, 4);
-    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending);
-    let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
+    let id1: PeerId = random();
+    let char_id_1 = create_char_id(id1.clone(), 0);
+    let char_id_2 = create_char_id(id1.clone(), 1);
+    let char_id_3 = create_char_id(id1.clone(), 2);
+    let char_id_4 = create_char_id(id1.clone(), 3);
+    let char_id_5 = create_char_id(id1.clone(), 4);
+    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending);
+    let wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
     seq.integrate_del(&wchar2);
@@ -228,16 +230,17 @@ fn test_visible_index_of_id() {
 #[test]
 fn test_integrate_del() {
     let mut seq = Sequence::new();
-    let char_id_1 = create_char_id(1, 0);
-    let char_id_2 = create_char_id(1, 1);
-    let char_id_3 = create_char_id(1, 2);
-    let char_id_4 = create_char_id(1, 3);
-    let char_id_5 = create_char_id(1, 4);
-    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
-    let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
+    let id1: PeerId = random();
+    let char_id_1 = create_char_id(id1.clone(), 0);
+    let char_id_2 = create_char_id(id1.clone(), 1);
+    let char_id_3 = create_char_id(id1.clone(), 2);
+    let char_id_4 = create_char_id(id1.clone(), 3);
+    let char_id_5 = create_char_id(id1.clone(), 4);
+    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+    let wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
     assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
@@ -253,14 +256,15 @@ fn test_integrate_del() {
 #[test]
 fn test_integrate_ins() {
     let mut seq = Sequence::new();
-    let char_id_1 = create_char_id(1, 0);
-    let char_id_2 = create_char_id(1, 1);
-    let char_id_3 = create_char_id(1, 2);
-    let char_id_4 = create_char_id(1, 3);
-    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+    let id1: PeerId = random();
+    let char_id_1 = create_char_id(id1.clone(), 0);
+    let char_id_2 = create_char_id(id1.clone(), 1);
+    let char_id_3 = create_char_id(id1.clone(), 2);
+    let char_id_4 = create_char_id(id1.clone(), 3);
+    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
     seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
     assert_eq!(seq.content(), "a");
     seq.integrate_ins(wchar2, char_id_1, CharId::Ending);
@@ -274,8 +278,9 @@ fn test_integrate_ins() {
 #[test]
 fn test_sequence_ith_visible() {
     let mut seq = Sequence::new();
-    let regId = create_char_id(1, 1);
-    let mut wchar = WootChar::new(regId, 'a', CharId::Beginning, CharId::Beginning);
+    let id1: PeerId = random();
+    let regId = create_char_id(id1.clone(), 1);
+    let wchar = WootChar::new(regId, 'a', CharId::Beginning, CharId::Beginning);
     seq.list.push(wchar);
     let mut wchar2 = WootChar::new(CharId::Beginning, 'a', CharId::Beginning, CharId::Beginning);
     wchar2.visible = false;
@@ -286,14 +291,15 @@ fn test_sequence_ith_visible() {
 #[test]
 fn test_sub_sequence() {
     let mut seq = Sequence::new();
-    let char_id_1 = create_char_id(1, 0);
-    let char_id_2 = create_char_id(1, 1);
-    let char_id_3 = create_char_id(1, 2);
-    let char_id_4 = create_char_id(1, 3);
-    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+    let id1: PeerId = random();
+    let char_id_1 = create_char_id(id1.clone(), 0);
+    let char_id_2 = create_char_id(id1.clone(), 1);
+    let char_id_3 = create_char_id(id1.clone(), 2);
+    let char_id_4 = create_char_id(id1.clone(), 3);
+    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
     seq.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
     seq.integrate_ins(wchar2.clone(), char_id_1.clone(), CharId::Ending);
     seq.integrate_ins(wchar3.clone(), char_id_2.clone(), CharId::Ending);
