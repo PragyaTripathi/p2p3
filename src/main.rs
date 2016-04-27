@@ -120,10 +120,10 @@ fn main() {
         site.parse_given_string(&initial_file_content);
     }
 
-    let static_ui = static_ui_handler(port_number, p2p3_url.clone());
+    let static_ui = static_ui_handler(port_number, p2p3_url.clone(), mp.clone());
     println!("Called Static UI Handler");
     fn recieve_commands() -> FnCommand {
-        Box::new(|comm| {
+        Box::new(|comm, mp| {
             let command = comm.clone();
             match command {
                 Command::Compile => {
@@ -132,7 +132,7 @@ fn main() {
                     let site_id = values.get_site_id();
                     let site_clone = site_singleton(site_id).inner.clone();
                     let mut site = site_clone.lock().unwrap();
-                    let ui_clone = static_ui_handler(values.get_port(), values.get_url()).inner.clone();
+                    let ui_clone = static_ui_handler(values.get_port(), values.get_url(), mp.clone()).inner.clone();
                     let ui = ui_clone.lock().unwrap();
                     match run_code(values.get_compile_mode(), &site.content()) {
                         Ok(o) => ui.send_command(Command::Output(o)),

@@ -14,7 +14,7 @@ pub struct P2P3Values {
     port: u16,
     url: String,
     git_access: GitAccess,
-    mode: CompileMode
+    mode: CompileMode,
 }
 
 impl P2P3Values {
@@ -49,6 +49,7 @@ impl P2P3Values {
     pub fn set_compile_mode(&mut self, mode: CompileMode) {
         self.mode = mode;
     }
+
 }
 
 pub fn p2p3_globals() -> P2P3Globals {
@@ -63,8 +64,8 @@ pub fn p2p3_globals() -> P2P3Globals {
                 site_id: 0,
                 port: 8080,
                 url: String::new(),
-                git_access: GitAccess::new(String::new(),String::new(),String::new(),String::new(),String::new()),
-                mode: CompileMode::None
+                git_access: GitAccess::default(),
+                mode: CompileMode::None,
             };
             let singleton = P2P3Globals {
                 inner: Arc::new((Mutex::new(globals)))
