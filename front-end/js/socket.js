@@ -43,7 +43,7 @@ sock.onmessage = function(event){
     case "UpdatePeerCursor":
       console.log("UpdatePeerCursor");
       console.log(obj);
-      var peer = obj.fields[0];
+      var peer = obj.fields[0]._field0[0];
       var row = obj.fields[1];
       var column = obj.fields[2];
       marker.updateCursorPos(peer, {row, column});
