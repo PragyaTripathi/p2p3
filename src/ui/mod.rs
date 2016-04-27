@@ -1,4 +1,6 @@
 #![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
+
+extern crate crust;
 use rustc_serialize::json;
 use std::io::Result as IoRes;
 use std::process::{Child, Stdio};
@@ -10,6 +12,7 @@ use url::Url;
 use ws::{listen, Handler, Sender, Result, Message, Handshake, CloseCode, Error};
 use ws::util::Token;
 use network::{MessagePasser};
+use self::crust::{PeerId};
 
 pub fn open_url(url: &str) -> IoRes<Child> {
     let (browser, args) = if cfg!(target_os = "linux") {
@@ -49,6 +52,8 @@ pub enum Command{
     Compile,
     DisableEditing(String),
     Mode(String),
+    UpdateCursor(u32, u32),
+    UpdatePeerCursor(PeerId, u32, u32),
 }
 
 pub type FnCommand = Box<Fn(&Command, MessagePasser)->Res<String, String> + Send + Sync>;
@@ -132,9 +137,7 @@ impl UiHandler{
                              listeners: Arc::new(Mutex::new(vec!())),
                              tx: cmdtx.clone(),
                              mp: mpasser.clone()} };
-                     println!("Sending");
                      tx.send(ui.share.clone()).unwrap();
-                     println!("After send");
                      ui
                  }).unwrap();
         });

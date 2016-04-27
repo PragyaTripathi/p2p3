@@ -40,6 +40,15 @@ sock.onmessage = function(event){
       editor.renderer.setStyle("disabled", true)
       editor.blur()
       break;
+    case "UpdatePeerCursor":
+      console.log("UpdatePeerCursor");
+      console.log(obj);
+      var peer = obj.fields[0];
+      var row = obj.fields[1];
+      var column = obj.fields[2];
+      marker.updateCursorPos(peer, {row, column});
+
+      break;
     default:
 
   }
@@ -128,6 +137,12 @@ editor.getSession().selection.on('changeSelection', function(e) {
 
 editor.getSession().selection.on('changeCursor', function(e) {
   console.log(e);
+  var curs = editor.selection.getCursor();
+  // send others cursor pos
+  sock.send(JSON.stringify({
+    variant: "UpdateCursor",
+    fields: [curs.row, curs.column],
+  }));
 });
 
 function getSelectedMode(mode) {

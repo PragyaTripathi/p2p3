@@ -14,6 +14,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 use async_queue::AsyncQueue;
+use utils::p2p3_globals;
+use woot::static_site::site_singleton;
+use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 
 //sub-crate imports
 use self::crust::{Event, PeerId,Service, ConnectionInfoResult, OurConnectionInfo, TheirConnectionInfo};
@@ -31,7 +34,8 @@ pub enum MsgKind {
     Normal,
     Broadcast,
     PeerConnectionInfoRequest,
-    PeerConnectionInfoResponse
+    PeerConnectionInfoResponse,
+    UpdateCursor
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
@@ -47,6 +51,13 @@ pub struct PeerConnectionInfoResponse {
     info_id: PeerId,
     info: TheirConnectionInfo,
     responder_has_info: bool
+}
+
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+pub struct Cursor {
+    pub peer_id: PeerId,
+    pub row: u32,
+    pub col: u32
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
@@ -73,6 +84,18 @@ pub trait MessagePasserT{
             source: self.get_id(),
             message: msg,
             kind: MsgKind::Broadcast,
+            seq_num: self.next_seq_num()};
+        for peer in self.peers(){
+            unwrap_result!(self.send_msg(peer, msg.clone()));
+        }
+        Ok(())
+    }
+
+    fn broadcast_message(&self, msg: String, msg_kind: MsgKind) -> Result<(), String>{
+        let msg = Message{
+            source: self.get_id(),
+            message: msg,
+            kind: msg_kind,
             seq_num: self.next_seq_num()};
         for peer in self.peers(){
             unwrap_result!(self.send_msg(peer, msg.clone()));
@@ -330,6 +353,19 @@ impl MessagePasser {
                     mp.send_msg(response.destination_id, msg_clone).unwrap();
                 }
             },
+            MsgKind::UpdateCursor => {
+                let mp = self.clone();
+                let cursor_new: Cursor = json::decode(&msg.message).unwrap();
+                // got updated cursor from peer pass to our ui
+                let globals = p2p3_globals().inner.clone();
+                let values = globals.lock().unwrap();
+                let site_id = values.get_site_id();
+                let site_clone = site_singleton(site_id).inner.clone();
+                let mut site = site_clone.lock().unwrap();
+                let ui_clone = static_ui_handler(values.get_port(), values.get_url(), mp.clone()).inner.clone();
+                let ui = ui_clone.lock().unwrap();
+                ui.send_command(Command::UpdatePeerCursor(cursor_new.peer_id, cursor_new.row, cursor_new.col));
+            },
             MsgKind::Broadcast =>{
                 if msg.source == self.my_id {
                     return;
@@ -364,7 +400,7 @@ impl MessagePasser {
         match event{
             // Invoked when a new message is received. Passes the message.
             Event::NewMessage(peer_id, bytes) => {
-                println!("Received a new message");
+                println!("Received a new message ");
                 self.on_recv_msg(peer_id, bytes.clone());
             },
             // Result to the call of Service::prepare_contact_info.

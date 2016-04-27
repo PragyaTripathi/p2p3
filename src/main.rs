@@ -1,4 +1,4 @@
-#![allow(dead_code,unused_variables,unused_imports)]
+#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
 
 extern crate crust;
 extern crate time;
@@ -11,6 +11,7 @@ extern crate rand;
 extern crate getopts;
 extern crate ws;
 extern crate url;
+extern crate bincode;
 
 mod commit;
 mod compile;
@@ -33,7 +34,7 @@ use permission::permissions_handler::PermissionLevel;
 use compile::{CompileMode, run_code};
 use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 use utils::p2p3_globals;
-use network::{MessagePasser, MessagePasserT};
+use network::{MessagePasser, MessagePasserT, Cursor, MsgKind};
 use network::bootstrap::BootstrapHandler;
 use std::io::stdin;
 use std::fs::File;
@@ -41,6 +42,9 @@ use std::io::prelude::*;
 use std::path::Path;
 use self::crust::PeerId;
 use self::rand::random;
+
+use self::bincode::rustc_serialize::{encode, decode};
+use self::rustc_serialize::json;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -150,7 +154,7 @@ fn main() {
                     let site_clone = site_singleton(values.get_site_id()).inner.clone();
                     let mut site = site_clone.lock().unwrap();
                     site.generate_insert(position, character, true);
-                    println!("Site content {}", site.content());
+                    // println!("Site content {}", site.content());
                 },
                 Command::DeleteChar(position) => {
                     println!("Received {}", position);
@@ -182,6 +186,19 @@ fn main() {
                     let globals = p2p3_globals().inner.clone();
                     let mut values = globals.lock().unwrap();
                     values.set_compile_mode(mode.parse::<CompileMode>().unwrap());
+                },
+                Command::UpdateCursor(row, col) => {
+                    // broadcast to people with your own peerId
+                    let cursor = Cursor {
+                        peer_id: mp.get_id(),
+                        row: row,
+                        col: col
+                    };
+                    let message_body = json::encode(&cursor).unwrap();
+                    mp.broadcast_message(message_body, MsgKind::UpdateCursor);
+                },
+                Command::UpdatePeerCursor(_, _, _) => {
+
                 },
             }
             Ok("".to_string())
