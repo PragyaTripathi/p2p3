@@ -1,10 +1,10 @@
 #![allow(dead_code,unused_variables,unused_imports, unused_mut)]
 
-use super::static_site::site_singleton;
 use rustc_serialize::json;
 use super::char_id::create_char_id;
 use super::char_id::CharId;
 use super::woot_char::WootChar;
+use super::static_site::StaticSite;
 use super::operation::Operation;
 use std::{thread,env};
 use std::thread::sleep;
@@ -12,8 +12,7 @@ use std::time::Duration;
 use std::sync::mpsc::channel;
 use super::crust::PeerId;
 
-pub fn run(site_id: PeerId) {
-    let static_site = site_singleton(site_id);
+pub fn run(static_site: StaticSite) {
 
     let site = static_site.inner.clone();
     let site2 = static_site.inner.clone();

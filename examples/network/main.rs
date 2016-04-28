@@ -18,7 +18,7 @@ use cmd_parser::*;
 use std::{thread,env};
 use getopts::Options;
 use p2p3::utils::p2p3_globals;
-use p2p3::woot::static_site::site_singleton;
+use p2p3::woot::static_site::StaticSite;
 use p2p3::network::{Message,MessagePasser, MessagePasserT};
 use std::io::Write;
 use std::io;
@@ -28,11 +28,7 @@ use p2p3::storage::storage_helper::GitAccess;
 use std::str::FromStr;
 use self::crust::PeerId;
 use self::rand::random;
-
-#[derive(RustcEncodable,RustcDecodable,Clone,Debug)]
-struct Msg(String);
-
-impl Message for Msg{}
+use p2p3::msg::Msg;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -90,7 +86,7 @@ fn main() {
         print_usage();
         return;
     };
-    let static_site = site_singleton(mp.get_id().clone());
+    let static_site = StaticSite::new(mp.clone());
 
     // Get the four parameters from the front-end.
     // let repo_url: String = "https://github.com/KajoAyame/p2p3_test.git".to_string();
@@ -147,16 +143,16 @@ fn main() {
             UserCommand::Send(index, message) => {
                 let peers = mp.peers();
                 //let index = usize::from_str(peer_index).unwrap();
-                mp.send(&peers[index], Msg(message));
+                mp.send(&peers[index], Msg::String(message));
             }
             UserCommand::SendAll(message) => {
-                mp.broadcast(Msg(message));
+                mp.broadcast(Msg::String(message));
             }
             UserCommand::List => {
                 mp.print_connected_nodes();
             }
             UserCommand::Broadcast(message) => {
-                mp.broadcast(Msg(message));
+                mp.broadcast(Msg::String(message));
             }
             UserCommand::Test => {
                 println!("Hello");

@@ -23,11 +23,12 @@ mod ui;
 mod woot;
 mod utils;
 mod async_queue;
+pub mod msg;
 
 use std::{thread,env};
 use getopts::Options;
 use storage::storage_helper::GitAccess;
-use woot::static_site::site_singleton;
+use woot::static_site::StaticSite;
 use woot::operation_thread::run;
 use permission::permissions_handler::get_permission_level;
 use permission::permissions_handler::PermissionLevel;
@@ -36,6 +37,7 @@ use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 use utils::p2p3_globals;
 use network::{Message, MessagePasser, MessagePasserT};
 use network::bootstrap::BootstrapHandler;
+use msg::Msg;
 use std::io::stdin;
 use std::fs::File;
 use std::io::prelude::*;
@@ -50,15 +52,6 @@ fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
     print!("{}", opts.usage(&brief));
 }
-
-#[derive(RustcEncodable,RustcDecodable, Clone, Debug)]
-enum Msg{
-    String(String),
-    // row, col
-    Cursor(u32, u32),
-}
-
-impl Message for Msg{}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -120,7 +113,7 @@ fn main() {
     println!("###############################");
 
 
-    let static_site = site_singleton(mp.get_id().clone());
+    let static_site = StaticSite::new(mp.clone());
 
     let permission_level = get_permission_level(&git_access);
     match permission_level {
@@ -139,19 +132,19 @@ fn main() {
         values.set_site_id(mp.get_id().clone());
     }
 
-    let static_ui = static_ui_handler(port_number, p2p3_url.clone());
+    let static_ui_handler = static_ui_handler(port_number, p2p3_url.clone());
     println!("Called Static UI Handler");
     let mp = mp.clone();
+    let static_ui = static_ui_handler.inner.clone();
+    let site_inner = static_site.inner.clone();
     let ui_cmd: FnCommand = Box::new(move|comm| {
         match comm.clone() {
             Command::Compile => {
                 let globals = p2p3_globals().inner.clone();
                 let values = globals.lock().unwrap();
                 let site_id = values.get_site_id();
-                let site_clone = site_singleton(site_id).inner.clone();
-                let mut site = site_clone.lock().unwrap();
-                let ui_clone = static_ui_handler(values.get_port(), values.get_url()).inner.clone();
-                let ui = ui_clone.lock().unwrap();
+                let mut site = site_inner.lock().unwrap();
+                let ui = static_ui.lock().unwrap();
                 match run_code(values.get_compile_mode(), &site.content()) {
                     Ok(o) => ui.send_command(Command::Output(o)),
                     Err(e) => println!("error {}", e),
@@ -161,8 +154,7 @@ fn main() {
                 println!("Received {} {}", position, character);
                 let globals = p2p3_globals().inner.clone();
                 let values = globals.lock().unwrap();
-                let site_clone = site_singleton(values.get_site_id()).inner.clone();
-                let mut site = site_clone.lock().unwrap();
+                let mut site = site_inner.lock().unwrap();
                 site.generate_insert(position, character, true);
                 // println!("Site content {}", site.content());
             },
@@ -170,8 +162,7 @@ fn main() {
                 println!("Received {}", position);
                 let globals = p2p3_globals().inner.clone();
                 let values = globals.lock().unwrap();
-                let site_clone = site_singleton(values.get_site_id()).inner.clone();
-                let mut site = site_clone.lock().unwrap();
+                let mut site = site_inner.lock().unwrap();
                 site.generate_del(position);
                 println!("Site content {}", site.content());
             },
@@ -208,7 +199,7 @@ fn main() {
         Ok("".to_string())
     });
     {
-        let ui_inner = static_ui.inner.clone();
+        let ui_inner = static_ui_handler.inner.clone();
         let ui = ui_inner.lock().unwrap();
 
         ui.add_listener(ui_cmd);
