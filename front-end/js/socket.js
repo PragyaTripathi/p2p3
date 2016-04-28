@@ -26,11 +26,13 @@ sock.onmessage = function(event){
     case "InsertChar":
       console.log(obj);
       var delta = asDelta(obj.fields[1], true, obj.fields[0]);
+      console.log(delta);
       editor.getSession().getDocument().applyDeltas([delta]);
       break;
     case "DeleteChar":
       console.log(obj);
       var delta = asDelta(obj.fields[1], true, obj.fields[0]);
+      console.log(delta);
       editor.getSession().getDocument().applyDeltas([delta]);
       break;
     case "DisableEditing":
@@ -57,13 +59,13 @@ sock.onmessage = function(event){
 
 // Convert a WOOT operation to an ACE delta object for WOOT index i:
 function asDelta(ch, isVisible, i) {
+  var start_pos = pos(i);
+  var end_pos = pos(i+1);
   return {
-    action: isVisible ? "insertText" : "removeText",
-    range: {
-      start: pos(i),
-      end:   pos(i+1)
-    },
-    text: ch
+    action: isVisible ? "insert" : "remove",
+    start: start_pos,
+    end: end_pos,
+    lines: [ch]
   };
 }
 

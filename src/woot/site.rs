@@ -37,8 +37,13 @@ impl Site {
     }
 
     pub fn implement_pool(&mut self) {
-        for operation in self.pool.clone().iter() {
-            self.implement_operation(operation.clone());
+        loop {
+            match self.pool.pop_front() {
+                Some(operation) => {
+                    self.implement_operation(operation.clone());
+                },
+                None => { break }
+            }
         }
     }
 
@@ -90,6 +95,7 @@ impl Site {
     }
 
     pub fn implement_operation(&mut self, operation: Operation) {
+        println!("Trying to implement_operation");
         let given_operation = operation.clone();
         match operation {
             Operation::Insert {w_char, from_site:_} => {
@@ -99,11 +105,14 @@ impl Site {
                 let id = w_char.id;
                 // Insert only if the id doesn't exist
                 if !self.sequence.exists(&id) {
+                    println!("Id doesn't exist");
                     if self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id) {
+                        println!("Can integrate");
                         self.sequence.integrate_ins(new_value, prev_id, next_id);
                         let visible_index = self.sequence.visible_index_of_id(&id);
                         (*self.ui_send)(Command::InsertChar(visible_index, w_char.value));
                     } else {
+                        println!("Putting operation in queue");
                         self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
                     }
@@ -113,14 +122,14 @@ impl Site {
                 let exists = self.sequence.exists(&w_char.id);
                 let visible_index = self.sequence.visible_index_of_id(&w_char.id);
                 if exists {
-                    let can_integrate = self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id);
-                    if can_integrate {
+                    // let can_integrate = self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id);
+                    // if can_integrate {
                         self.sequence.integrate_del(&w_char);
                         (*self.ui_send)(Command::DeleteChar(visible_index));
-                    } else {
-                        self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
+                    // } else {
+                        // self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
-                    }
+                    // }
                 }
             }
         }

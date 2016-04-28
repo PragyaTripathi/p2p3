@@ -9,6 +9,7 @@ extern crate p2p3;
 
 use std::env;
 use getopts::Options;
+use std::thread;
 use p2p3::storage::storage_helper::GitAccess;
 use p2p3::woot::static_site::StaticSite;
 use p2p3::woot::site::UISend;
@@ -125,7 +126,9 @@ fn main() {
         site.parse_given_string(&initial_file_content);
     }
     let mp = mp.clone();
+    let another_mp = mp.clone();
     let static_ui = static_ui_handler.inner.clone();
+    let another_static_ui = static_ui_handler.inner.clone();
     let ui_cmd: FnCommand = Box::new(move|comm| {
         match comm.clone() {
             Command::Compile => {
@@ -174,7 +177,7 @@ fn main() {
             },
             Command::UpdateCursor(row, col) => {
                 // broadcast to people with your own peerId
-                mp.broadcast(Msg::Cursor(row,col));
+                mp.broadcast(Msg::Cursor(mp.get_id().clone(), row,col));
             },
             Command::UpdatePeerCursor(_, _, _) => {
 
@@ -203,6 +206,26 @@ fn main() {
         };
     }
     println!("Connection with front-end initialized.");
+    let site_inner = static_site.inner.clone();
+    thread::spawn(move || {
+        loop {
+            let message = another_mp.recv();
+            match message.message() {
+                Msg::Cursor(peer_id,row,col) => {
+                    let ui = another_static_ui.lock().unwrap();
+                    ui.send_command(Command::UpdatePeerCursor(peer_id, row, col));
+                },
+                Msg::WootOperation(operation) => {
+                    println!("Received WootOperation");
+                    let mut site = site_inner.lock().unwrap();
+                    // site.pool.push_back(operation);
+                    // site.implement_pool();
+                    site.implement_operation(operation);
+                },
+                _ => {}
+            }
+        }
+    });
     let mut x = String::new();
     stdin().read_line(&mut x).unwrap();
 }

@@ -259,6 +259,7 @@ impl<T:Message> MessagePasser<T> {
     fn on_recv_pkt(&self, _: PeerId, pkt: Packet<T>){
         match pkt.protocol {
             Protocol::Normal =>{
+                println!("Received packet");
                 self.on_recv_enq(pkt);
             },
             Protocol::Broadcast =>{
@@ -277,6 +278,7 @@ impl<T:Message> MessagePasser<T> {
                     *rec_seq = pkt.seq_num;
                 }
                 // Add to recv_queue
+                println!("Received packet");
                 self.on_recv_enq(pkt.clone());
 
                 // Forward to those with cyclically greater peer_id values

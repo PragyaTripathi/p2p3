@@ -19,10 +19,11 @@ body {
   }
 
   #mode {
-    float: right;
+    float: left;
     color: #ff9000;
     width: 100px;
     height: auto;
+    margin-top: 8px;
   }
 
   #compileButton {
@@ -30,6 +31,7 @@ body {
     color: #ff9000;
     width: 100px;
     height: auto;
+    margin-top: 8px;
   }
 
   #commitButton {
@@ -37,6 +39,7 @@ body {
     color: #ff9000;
     width: 100px;
     height: auto;
+    margin-top: 8px;
   }
 
   #editor {

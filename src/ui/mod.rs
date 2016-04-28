@@ -12,11 +12,10 @@ use ws::util::Token;
 use crust::PeerId;
 
 pub fn open_url(url: &str) -> IoRes<Child> {
-    let mac_cmd = format!("open /Applications/Google\\ Chrome.app \"{}\"", url);
     let (browser, args) = if cfg!(target_os = "linux") {
         ("xdg-open", vec![])
     } else if cfg!(target_os = "macos") {
-        ("sh", vec!["-c", &mac_cmd])
+        ("open", vec!["-g"])
     } else if cfg!(target_os = "windows") {
         // `start` requires an empty string as its first parameter.
         ("cmd", vec!["/c","start","chrome"])

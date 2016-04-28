@@ -16,7 +16,8 @@
     "zone.js": "0.6.6",
     "ace-builds": "*",
     "bootstrap": "*",
-    "bootswatch": "*"
+    "bootswatch": "*",
+    "jquery": "*"
   },
   "devDependencies": {
     "concurrently": "^2.0.0",

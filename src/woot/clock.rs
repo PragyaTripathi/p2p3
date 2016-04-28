@@ -2,7 +2,7 @@
 use std::cmp::Ordering;
 use std::cell::Cell;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Clock {
     pub value: Cell<u32>,
 }

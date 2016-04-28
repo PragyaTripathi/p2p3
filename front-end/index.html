@@ -3,26 +3,48 @@
     <title>P2P3</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="styles/style.css">
-    <script type="text/javascript" src="node_modules/ace-builds/src-min-noconflict/ace.js"></script>
+    <script type="text/javascript" src="node_modules/ace-builds/src/ace.js"></script>
+    <!-- <script type="text/javascript" src="node_modules/bootstrap/dist/js/jquery.min.js"></script> -->
+    <!-- <script type="text/javascript" src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script> -->
+    <link rel="stylesheet" href="node_modules/bootswatch/simplex/bootstrap.min.css"></script>
   </head>
   <body>
     <div id="console">
-      <div>
-        <span id="wsStatus">Online</span> <span id="wsMsg"></span>
-        <button id="commitButton" onclick="commitOnClick()">Commit</button>
-        <button id="compileButton" onclick="compileOnClick()">Compile</button>
-        <select id="mode" onchange="getSelectedMode(this)">
-          <option value=""></option>
-          <option value="c_cpp">C/C++</option>
-          <option value="python">Python</option>
-          <option value="ruby">Ruby</option>
-          <option value="lua">Lua</option>
-        </select>
+    </div>
+        <nav class="navbar navbar-inverse">
+          <div class="container-fluid">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-2">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="#">P2P3</a>
+            </div>
+
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
+              <div>
+                <select id="mode" onchange="getSelectedMode(this)">
+                  <option value=""></option>
+                  <option value="c_cpp">C/C++</option>
+                  <option value="python">Python</option>
+                  <option value="ruby">Ruby</option>
+                  <option value="lua">Lua</option>
+                </select>
+              </div>
+              <ul class="nav navbar-nav navbar-right">
+                <li><button id="commitButton" onclick="commitOnClick()">Commit</button></li>
+                <li><button id="compileButton" onclick="compileOnClick()">Compile</button></li>
+              </ul>
+            </div>
+          </div>
+        </nav>
       </div>
     </div>
 
     <div id="editor"> </div>
-    <div id="output"></div>
+    <div id="output" class="jumbotron"></div>
     <script type="text/javascript" src='js/port.js'></script>
     <script type="text/javascript" src='js/editor.js'></script>
     <script type="text/javascript" src='js/socket.js'></script>

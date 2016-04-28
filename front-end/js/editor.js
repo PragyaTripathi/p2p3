@@ -1,5 +1,5 @@
 var editor = ace.edit("editor");
-editor.setTheme("ace/theme/merbivore");
+editor.setTheme("ace/theme/cobalt");
 editor.getSession().getDocument().setNewLineMode("unix");
 editor.getSession().setMode("ace/mode/markdown");
 
