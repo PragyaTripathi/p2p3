@@ -1,6 +1,6 @@
 var editor = ace.edit("editor");
 editor.setTheme("ace/theme/cobalt");
-editor.getSession().getDocument().setNewLineMode("unix");
+editor.getSession().getDocument().setNewLineMode("auto");
 editor.getSession().setMode("ace/mode/markdown");
 
 // Convert ACE "position" (row/column) to WOOT "index":
