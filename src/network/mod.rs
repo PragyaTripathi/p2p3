@@ -58,7 +58,7 @@ impl<T:Message> Packet<T>{
 }
 
 //TODO: implement error types correctly
-pub trait MessagePasserT<T:Message>{
+pub trait MessagePasserT<T:Message>: Send{
     fn recv(&self) -> Packet<T>;
     fn try_recv(&self) -> Option<Packet<T>>;
     fn get_id(&self) -> &PeerId;

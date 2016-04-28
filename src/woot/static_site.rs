@@ -13,7 +13,7 @@ pub struct StaticSite {
 impl StaticSite {
     pub fn new(mp: MessagePasser<Msg>, ui_send: Arc<UISend>) -> StaticSite {
         StaticSite {
-            inner: Arc::new((Mutex::new(Site::new(mp.get_id().clone(), mp, ui_send))))
+            inner: Arc::new((Mutex::new(Site::new(mp.get_id().clone(), Box::new(mp), ui_send))))
         }
     }
 }
