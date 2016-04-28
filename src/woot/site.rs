@@ -16,6 +16,9 @@ use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 use utils::p2p3_globals;
 use network::{Message, MessagePasser, MessagePasserT};
 use msg::Msg;
+use std::sync::Arc;
+
+pub type UISend = Box<Fn(Command) + Send + Sync>;
 
 #[derive(Clone)]
 pub struct Site {
@@ -23,12 +26,13 @@ pub struct Site {
     logical_clock: Clock,
     sequence: Sequence,
     pub pool: VecDeque<Operation>,
-    message_passer: MessagePasser<Msg>
+    message_passer: MessagePasser<Msg>,
+    ui_send: Arc<UISend>
 }
 
 impl Site {
-    pub fn new(site_id: PeerId, mp: MessagePasser<Msg>) -> Site {
-        Site {site_id: site_id, logical_clock: Clock::new(), sequence: Sequence::new(), pool: VecDeque::default(), message_passer: mp}
+    pub fn new(site_id: PeerId, mp: MessagePasser<Msg>, ui_send: Arc<UISend>) -> Site {
+        Site {site_id: site_id, logical_clock: Clock::new(), sequence: Sequence::new(), pool: VecDeque::default(), message_passer: mp, ui_send: ui_send}
     }
 
     pub fn implement_pool(&mut self) {
@@ -97,7 +101,7 @@ impl Site {
                     if self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id) {
                         self.sequence.integrate_ins(new_value, prev_id, next_id);
                         let visible_index = self.sequence.visible_index_of_id(&id);
-                        self.send_to_ui(Command::InsertChar(visible_index, w_char.value));
+                        (*self.ui_send)(Command::InsertChar(visible_index, w_char.value));
                     } else {
                         self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
@@ -111,7 +115,7 @@ impl Site {
                     let can_integrate = self.can_integrate_id(&w_char.prev_id) && self.can_integrate_id(&w_char.next_id);
                     if can_integrate {
                         self.sequence.integrate_del(&w_char);
-                        self.send_to_ui(Command::DeleteChar(visible_index));
+                        (*self.ui_send)(Command::DeleteChar(visible_index));
                     } else {
                         self.pool.push_back(given_operation); // if the operation is not executable, push it back to queue
                         // This is assuming that the loop which processes operations in driver mod will pop them out of queue while calling this function
@@ -124,14 +128,6 @@ impl Site {
     fn broadcast(&self, operation: Operation) {
         // Call network manager to broadcast
         self.message_passer.broadcast(Msg::WootOperation(operation));
-    }
-
-    fn send_to_ui(&self, cmd: Command) {
-        let p2p3_globals = p2p3_globals().inner.clone();
-        let values = p2p3_globals.lock().unwrap();
-        let ui_clone = static_ui_handler(values.get_port(), values.get_url()).inner.clone();
-        let ui = ui_clone.lock().unwrap();
-        ui.send_command(cmd);
     }
 
     pub fn reception(&mut self, encoded: String) {
@@ -149,11 +145,20 @@ impl Site {
     }
 }
 
+fn create_test_site() -> Site {
+    let id: PeerId = random();
+    create_test_site_with_id(id)
+}
+
+fn create_test_site_with_id(id: PeerId) -> Site {
+    let (mp,_) = MessagePasser::new();
+    let ui_send: UISend = Box::new(move|_| {});
+    Site::new(id, mp, Arc::new(ui_send))
+}
+
 #[test]
 fn test_generate_insert() {
-    let (mp,_) = MessagePasser::new();
-    let id1: PeerId = random();
-    let mut site = Site::new(id1, mp);
+    let mut site = create_test_site();
     site.generate_insert(0, 'H', false);
     let val = "H";
     assert_eq!(site.content(), val);
@@ -161,9 +166,7 @@ fn test_generate_insert() {
 
 #[test]
 fn test_generate_del() {
-    let id1: PeerId = random();
-    let (mp,_) = MessagePasser::new();
-    let mut site = Site::new(id1, mp);
+    let mut site = create_test_site();
     site.generate_insert(0, 'A', false);
     site.generate_insert(1, 'P', false);
     site.generate_insert(2, 'R', false);
@@ -187,13 +190,12 @@ fn test_generate_del() {
 
 #[test]
 fn test_operation() {
-    let (mp,_) = MessagePasser::new();
     let id1: PeerId = random();
     let id2: PeerId = random();
     let id3: PeerId = random();
-    let mut site = Site::new(id1, mp.clone());
-    let mut site2 = Site::new(id2, mp.clone());
-    let mut site3 = Site::new(id3, mp.clone());
+    let mut site = create_test_site_with_id(id1.clone());
+    let mut site2 = create_test_site_with_id(id2.clone());
+    let mut site3 = create_test_site_with_id(id3.clone());
     let char_id_1 = create_char_id(id1.clone(), 0);
     let char_id_2 = create_char_id(id2.clone(), 0);
     let char_id_3 = create_char_id(id1.clone(), 1);
@@ -231,9 +233,7 @@ fn test_operation() {
 
 #[test]
 fn test_site() {
-    let id1: PeerId = random();
-    let (mp,_) = MessagePasser::new();
-    let mut site = Site::new(id1, mp);
+    let mut site = create_test_site();
     let file_contents = "fn main() { \n println!(\"Hello, P2P3!\"); \n }";
     site.parse_given_string(file_contents);
     let value = site.content();

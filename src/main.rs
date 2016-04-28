@@ -26,9 +26,11 @@ mod async_queue;
 pub mod msg;
 
 use std::{thread,env};
+use std::sync::{Arc,Mutex};
 use getopts::Options;
 use storage::storage_helper::GitAccess;
 use woot::static_site::StaticSite;
+use woot::site::UISend;
 use woot::operation_thread::run;
 use permission::permissions_handler::get_permission_level;
 use permission::permissions_handler::PermissionLevel;
@@ -113,8 +115,6 @@ fn main() {
     println!("###############################");
 
 
-    let static_site = StaticSite::new(mp.clone());
-
     let permission_level = get_permission_level(&git_access);
     match permission_level {
         PermissionLevel::Editor => println!("The user is an editor"),
@@ -123,10 +123,6 @@ fn main() {
 
     let file_name = &(local_path+file_path);
     {
-        let initial_file_content = read_file(file_name);
-        let site_clone = static_site.inner.clone();
-        let mut site = site_clone.lock().unwrap();
-        site.parse_given_string(&initial_file_content);
         let globals = p2p3_globals().inner.clone();
         let mut values = globals.lock().unwrap();
         values.set_site_id(mp.get_id().clone());
@@ -134,9 +130,23 @@ fn main() {
 
     let static_ui_handler = static_ui_handler(port_number, p2p3_url.clone());
     println!("Called Static UI Handler");
+    let static_ui = static_ui_handler.inner.clone();
+
+    let ui_send: UISend = Box::new(move|comm| {
+        let ui = static_ui.lock().unwrap();
+        ui.send_command(comm);
+    });
+
+    let static_site = StaticSite::new(mp.clone(), Arc::new(ui_send));
+    let site_inner = static_site.inner.clone();
+    {
+        let initial_file_content = read_file(file_name);
+        let site_clone = static_site.inner.clone();
+        let mut site = site_clone.lock().unwrap();
+        site.parse_given_string(&initial_file_content);
+    }
     let mp = mp.clone();
     let static_ui = static_ui_handler.inner.clone();
-    let site_inner = static_site.inner.clone();
     let ui_cmd: FnCommand = Box::new(move|comm| {
         match comm.clone() {
             Command::Compile => {

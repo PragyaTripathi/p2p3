@@ -16,9 +16,11 @@ mod cmd_parser;
 use cmd_parser::*;
 
 use std::{thread,env};
+use std::sync::{Arc,Mutex};
 use getopts::Options;
 use p2p3::utils::p2p3_globals;
 use p2p3::woot::static_site::StaticSite;
+use p2p3::woot::site::UISend;
 use p2p3::network::{Message,MessagePasser, MessagePasserT};
 use std::io::Write;
 use std::io;
@@ -86,7 +88,10 @@ fn main() {
         print_usage();
         return;
     };
-    let static_site = StaticSite::new(mp.clone());
+    let ui_send: UISend = Box::new(move|comm| {
+    });
+
+    let static_site = StaticSite::new(mp.clone(), Arc::new(ui_send));
 
     // Get the four parameters from the front-end.
     // let repo_url: String = "https://github.com/KajoAyame/p2p3_test.git".to_string();
