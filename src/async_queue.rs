@@ -32,6 +32,11 @@ impl<T> AsyncQueue<T>{
         q.push_back(item);
         self.condvar.notify_one();
     }
+
+    pub fn len(&self) -> usize{
+        let q = unwrap_result!(self.queue.lock());
+        q.len()
+    }
 }
 
 #[cfg(test)]

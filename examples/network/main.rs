@@ -19,7 +19,7 @@ use std::{thread,env};
 use getopts::Options;
 use p2p3::utils::p2p3_globals;
 use p2p3::woot::static_site::site_singleton;
-use p2p3::network::{MessagePasser, MessagePasserT};
+use p2p3::network::{Message,MessagePasser, MessagePasserT};
 use std::io::Write;
 use std::io;
 use rustc_serialize::json;
@@ -28,6 +28,11 @@ use p2p3::storage::storage_helper::GitAccess;
 use std::str::FromStr;
 use self::crust::PeerId;
 use self::rand::random;
+
+#[derive(RustcEncodable,RustcDecodable,Clone,Debug)]
+struct Msg(String);
+
+impl Message for Msg{}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -85,7 +90,7 @@ fn main() {
         print_usage();
         return;
     };
-    let static_site = site_singleton(mp.get_id());
+    let static_site = site_singleton(mp.get_id().clone());
 
     // Get the four parameters from the front-end.
     // let repo_url: String = "https://github.com/KajoAyame/p2p3_test.git".to_string();
@@ -142,39 +147,20 @@ fn main() {
             UserCommand::Send(index, message) => {
                 let peers = mp.peers();
                 //let index = usize::from_str(peer_index).unwrap();
-                mp.send(peers[index], message).unwrap();
+                mp.send(&peers[index], Msg(message));
             }
             UserCommand::SendAll(message) => {
-                mp.broadcast(message).unwrap();
+                mp.broadcast(Msg(message));
             }
             UserCommand::List => {
-                let peers = mp.peers();
-                let service_am = mp.get_service();
-                let service = unwrap_result!(service_am.lock());
-                let mut i = 0;
-                for peer in peers.iter(){
-                    if let Some(conn_info) = service.connection_info(peer) {
-                        println!("    [{}] {}   {} <--> {} [{}][{}]",
-                                 i, peer, conn_info.our_addr, conn_info.their_addr, conn_info.protocol,
-                                 if conn_info.closed { "closed" } else { "open" }
-                        );
-                    }
-                    i+=1;
-                }
+                mp.print_connected_nodes();
             }
             UserCommand::Broadcast(message) => {
-                mp.broadcast(message).unwrap();
+                mp.broadcast(Msg(message));
             }
             UserCommand::Test => {
                 println!("Hello");
             }
-            /*
-            UserCommand::Clean => {
-                let mut network = network.lock().unwrap();
-                network.remove_disconnected_nodes();
-                network.print_connected_nodes();
-            }
-            */
             UserCommand::Stop => {
                 break;
             }

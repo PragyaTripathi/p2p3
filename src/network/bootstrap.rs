@@ -11,7 +11,7 @@ use self::socket_addr::SocketAddr;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use rustc_serialize::json::as_pretty_json;
-use super::MessagePasser;
+use super::{MessagePasser,Message};
 use utils::p2p3_globals;
 
 #[derive(PartialEq, Eq, Debug, RustcDecodable, RustcEncodable, Clone)]
@@ -89,7 +89,7 @@ impl BootstrapHandler {
         info
     }
 
-    pub fn update_config(&self, mp: MessagePasser) {
+    pub fn update_config<T:Message>(&self, mp: MessagePasser<T>) {
         let tok = mp.prepare_connection_info();
         let their_info = mp.wait_conn_info(tok);
         let mut info = BootstrapHandler::static_info_from_their(their_info);

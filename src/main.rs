@@ -34,7 +34,7 @@ use permission::permissions_handler::PermissionLevel;
 use compile::{CompileMode, run_code};
 use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
 use utils::p2p3_globals;
-use network::{MessagePasser, MessagePasserT, Cursor, MsgKind};
+use network::{Message, MessagePasser, MessagePasserT};
 use network::bootstrap::BootstrapHandler;
 use std::io::stdin;
 use std::fs::File;
@@ -50,6 +50,15 @@ fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
     print!("{}", opts.usage(&brief));
 }
+
+#[derive(RustcEncodable,RustcDecodable, Clone, Debug)]
+enum Msg{
+    String(String),
+    // row, col
+    Cursor(u32, u32),
+}
+
+impl Message for Msg{}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -101,14 +110,14 @@ fn main() {
 
     println!("Starting bootstrap");
     let boot = BootstrapHandler::bootstrap_load();
-    let (mp,_) = MessagePasser::new();
+    let (mp,_) = MessagePasser::<Msg>::new();
     boot.update_config(mp.clone());
     println!("###############################");
     println!("My id is {:?}", mp.get_id());
     println!("###############################");
 
 
-    let static_site = site_singleton(mp.get_id());
+    let static_site = site_singleton(mp.get_id().clone());
 
     let permission_level = get_permission_level(&git_access);
     match permission_level {
@@ -117,7 +126,6 @@ fn main() {
     };
 
     let file_name = &(local_path+file_path);
-    let message_passer = mp.clone();
     {
         let initial_file_content = read_file(file_name);
         let site_clone = static_site.inner.clone();
@@ -125,92 +133,82 @@ fn main() {
         site.parse_given_string(&initial_file_content);
         let globals = p2p3_globals().inner.clone();
         let mut values = globals.lock().unwrap();
-        values.set_site_id(message_passer.get_id());
+        values.set_site_id(mp.get_id().clone());
     }
 
-    let static_ui = static_ui_handler(port_number, p2p3_url.clone(), mp.clone());
+    let static_ui = static_ui_handler(port_number, p2p3_url.clone());
     println!("Called Static UI Handler");
-    fn recieve_commands() -> FnCommand {
-        Box::new(|comm, mp| {
-            let command = comm.clone();
-            match command {
-                Command::Compile => {
-                    let globals = p2p3_globals().inner.clone();
-                    let values = globals.lock().unwrap();
-                    let site_id = values.get_site_id();
-                    let site_clone = site_singleton(site_id).inner.clone();
-                    let mut site = site_clone.lock().unwrap();
-                    let ui_clone = static_ui_handler(values.get_port(), values.get_url(), mp.clone()).inner.clone();
-                    let ui = ui_clone.lock().unwrap();
-                    match run_code(values.get_compile_mode(), &site.content()) {
-                        Ok(o) => ui.send_command(Command::Output(o)),
-                        Err(e) => println!("error {}", e),
-                    };
-                },
-                Command::InsertChar(position, character) => {
-                    println!("Received {} {}", position, character);
-                    let globals = p2p3_globals().inner.clone();
-                    let values = globals.lock().unwrap();
-                    let site_clone = site_singleton(values.get_site_id()).inner.clone();
-                    let mut site = site_clone.lock().unwrap();
-                    site.generate_insert(position, character, true);
-                    // println!("Site content {}", site.content());
-                },
-                Command::DeleteChar(position) => {
-                    println!("Received {}", position);
-                    let globals = p2p3_globals().inner.clone();
-                    let values = globals.lock().unwrap();
-                    let site_clone = site_singleton(values.get_site_id()).inner.clone();
-                    let mut site = site_clone.lock().unwrap();
-                    site.generate_del(position);
-                    println!("Site content {}", site.content());
-                },
-                Command::Commit => {
-                    let globals = p2p3_globals().inner.clone();
-                    let values = globals.lock().unwrap();
-                    let ga = values.get_git_access();
-                    ga.commit_path("Commit message").unwrap();
-                    ga.push().unwrap();
-                },
-                Command::InsertString(position, content) => {
+    let mp = mp.clone();
+    let ui_cmd: FnCommand = Box::new(move|comm| {
+        match comm.clone() {
+            Command::Compile => {
+                let globals = p2p3_globals().inner.clone();
+                let values = globals.lock().unwrap();
+                let site_id = values.get_site_id();
+                let site_clone = site_singleton(site_id).inner.clone();
+                let mut site = site_clone.lock().unwrap();
+                let ui_clone = static_ui_handler(values.get_port(), values.get_url()).inner.clone();
+                let ui = ui_clone.lock().unwrap();
+                match run_code(values.get_compile_mode(), &site.content()) {
+                    Ok(o) => ui.send_command(Command::Output(o)),
+                    Err(e) => println!("error {}", e),
+                };
+            },
+            Command::InsertChar(position, character) => {
+                println!("Received {} {}", position, character);
+                let globals = p2p3_globals().inner.clone();
+                let values = globals.lock().unwrap();
+                let site_clone = site_singleton(values.get_site_id()).inner.clone();
+                let mut site = site_clone.lock().unwrap();
+                site.generate_insert(position, character, true);
+                // println!("Site content {}", site.content());
+            },
+            Command::DeleteChar(position) => {
+                println!("Received {}", position);
+                let globals = p2p3_globals().inner.clone();
+                let values = globals.lock().unwrap();
+                let site_clone = site_singleton(values.get_site_id()).inner.clone();
+                let mut site = site_clone.lock().unwrap();
+                site.generate_del(position);
+                println!("Site content {}", site.content());
+            },
+            Command::Commit => {
+                let globals = p2p3_globals().inner.clone();
+                let values = globals.lock().unwrap();
+                let ga = values.get_git_access();
+                ga.commit_path("Commit message").unwrap();
+                ga.push().unwrap();
+            },
+            Command::InsertString(position, content) => {
 
-                },
-                Command::Output(results) => {
+            },
+            Command::Output(results) => {
 
-                },
-                Command::DisableEditing(_) => {
+            },
+            Command::DisableEditing(_) => {
 
-                },
-                Command::Mode(mode) => {
-                    println!("Mode selected: {}", mode);
-                    let globals = p2p3_globals().inner.clone();
-                    let mut values = globals.lock().unwrap();
-                    values.set_compile_mode(mode.parse::<CompileMode>().unwrap());
-                },
-                Command::UpdateCursor(row, col) => {
-                    // broadcast to people with your own peerId
-                    let cursor = Cursor {
-                        peer_id: mp.get_id(),
-                        row: row,
-                        col: col
-                    };
-                    let message_body = json::encode(&cursor).unwrap();
-                    mp.broadcast_message(message_body, MsgKind::UpdateCursor);
-                },
-                Command::UpdatePeerCursor(_, _, _) => {
+            },
+            Command::Mode(mode) => {
+                println!("Mode selected: {}", mode);
+                let globals = p2p3_globals().inner.clone();
+                let mut values = globals.lock().unwrap();
+                values.set_compile_mode(mode.parse::<CompileMode>().unwrap());
+            },
+            Command::UpdateCursor(row, col) => {
+                // broadcast to people with your own peerId
+                mp.broadcast(Msg::Cursor(row,col));
+            },
+            Command::UpdatePeerCursor(_, _, _) => {
 
-                },
-            }
-            Ok("".to_string())
-        })
-    };
-    println!("Created receive commands");
-    let command_func = recieve_commands();
+            },
+        }
+        Ok("".to_string())
+    });
     {
         let ui_inner = static_ui.inner.clone();
         let ui = ui_inner.lock().unwrap();
 
-        ui.add_listener(command_func);
+        ui.add_listener(ui_cmd);
         let mut content = String::new();
         {
             let site_clone = static_site.inner.clone();

@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate maidsafe_utilities;
 
-//extern crate crust;
+extern crate crust;
 extern crate time;
 extern crate git2;
 extern crate rustc_serialize;

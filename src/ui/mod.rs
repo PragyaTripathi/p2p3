@@ -1,6 +1,4 @@
 #![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
-
-extern crate crust;
 use rustc_serialize::json;
 use std::io::Result as IoRes;
 use std::process::{Child, Stdio};
@@ -11,8 +9,7 @@ use std::{thread, mem};
 use url::Url;
 use ws::{listen, Handler, Sender, Result, Message, Handshake, CloseCode, Error};
 use ws::util::Token;
-use network::{MessagePasser};
-use self::crust::{PeerId};
+use crust::PeerId;
 
 pub fn open_url(url: &str) -> IoRes<Child> {
     let (browser, args) = if cfg!(target_os = "linux") {
@@ -56,14 +53,13 @@ pub enum Command{
     UpdatePeerCursor(PeerId, u32, u32),
 }
 
-pub type FnCommand = Box<Fn(&Command, MessagePasser)->Res<String, String> + Send + Sync>;
+pub type FnCommand = Box<Fn(&Command)->Res<String, String> + Send + Sync>;
 
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct UiHandler{
     tx: mpsc::Sender<Command>,
-    listeners: Arc<Mutex<Vec<FnCommand>>>,
-    mp: MessagePasser
+    listeners: Arc<Mutex<Vec<FnCommand>>>
 }
 
 pub struct UiInner{
@@ -83,7 +79,7 @@ impl Handler for UiInner {
             Message::Text(txt) => {
                 let cmd: Command = json::decode(&txt).unwrap();
                 for listener in self.share.listeners.lock().unwrap().iter() {
-                    let res = listener(&cmd, self.share.clone().mp);
+                    let res = listener(&cmd);
                     match res{
                         Ok(_)=> {},
                         Err(_)=>{panic!("Oh noooo!")}
@@ -123,7 +119,7 @@ impl Handler for UiInner {
 
 impl UiHandler{
     #[allow(dead_code)]
-    pub fn new(port: u16, url: String, mpasser: MessagePasser) -> UiHandler {
+    pub fn new(port: u16, url: String) -> UiHandler {
         let (tx,rx) = channel();
         println!("listening on 127.0.0.1:{}",port);
         thread::spawn(move||{
@@ -135,8 +131,7 @@ impl UiHandler{
                          rx: cmdrx,
                          share: UiHandler{
                              listeners: Arc::new(Mutex::new(vec!())),
-                             tx: cmdtx.clone(),
-                             mp: mpasser.clone()} };
+                             tx: cmdtx.clone()} };
                      tx.send(ui.share.clone()).unwrap();
                      ui
                  }).unwrap();
@@ -164,7 +159,7 @@ pub struct StaticUiHandler {
     pub inner: Arc<Mutex<UiHandler>>
 }
 
-pub fn static_ui_handler(port: u16, url: String, mp: MessagePasser) -> StaticUiHandler {
+pub fn static_ui_handler(port: u16, url: String) -> StaticUiHandler {
     // Initialize it to a null value
     static mut SINGLETON: *const StaticUiHandler = 0 as *const StaticUiHandler;
     static ONCE: Once = ONCE_INIT;
@@ -173,7 +168,7 @@ pub fn static_ui_handler(port: u16, url: String, mp: MessagePasser) -> StaticUiH
         ONCE.call_once(|| {
             // Make it
             let singleton = StaticUiHandler {
-                inner: Arc::new((Mutex::new(UiHandler::new(port, url, mp))))
+                inner: Arc::new((Mutex::new(UiHandler::new(port, url))))
             };
 
             // Put it in the heap so it can outlive this call

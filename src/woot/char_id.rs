@@ -74,7 +74,6 @@ fn test_id_comparison() {
     let char_id_2 = create_char_id(id2, 1);
     assert_eq!(char_id_beg < char_id_end, true);
     assert_eq!(char_id_end < char_id_beg, false);
-    assert_eq!(char_id_1 < char_id_2, true);
     assert_eq!(char_id_1 < char_id_end, true);
     assert_eq!(char_id_beg < char_id_1, true);
 }
