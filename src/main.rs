@@ -93,6 +93,9 @@ fn main() {
     let local_path = matches.opt_str("f").unwrap();
     let p = env::current_dir().unwrap();
     let p2p3_url = format!("file://{}/front-end/index.html?port={}", p.display(), port_number);
+    let port_js_path = format!("{}/front-end/js/port.js", p.display());
+    let port_js = format!("var portNumber = {};", port_number);
+    write_to_file(&port_js_path, &port_js);
     let file_path = "c_code.c";
     let git_access = GitAccess::new(git_url.clone(), local_path.clone(), file_path.to_string().clone(), git_username.clone(), git_password.clone());
     {
@@ -239,5 +242,18 @@ fn read_file(url: &str) -> String {
     match file.read_to_string(&mut s) {
         Err(_) => panic!("Could not read"),
         Ok(_) => return s,
+    }
+}
+
+fn write_to_file(path: &str, content: &str) {
+    use std::fs::OpenOptions;
+    let file = OpenOptions::new().write(true).create(true).open(path);
+    let mut f = match file {
+        Err(_) => panic!("could not open {}", path),
+        Ok(new_file) => new_file,
+    };
+    match f.write_all(content.as_bytes()) {
+        Err(_) => panic!("Could not write"),
+        Ok(_) => {},
     }
 }

@@ -2,7 +2,7 @@ function getURLParameter(name) {
   return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
 }
 
-var sock = new WebSocket("ws://127.0.0.1:" + getURLParameter("port") +"/");
+var sock = new WebSocket("ws://127.0.0.1:" + portNumber +"/");
 var first_remove = true;
 
 
