@@ -1,4 +1,4 @@
-#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
+#![allow(dead_code)]
 use rustc_serialize::json;
 use std::io::Result as IoRes;
 use std::process::{Child, Stdio};
@@ -106,7 +106,7 @@ impl Handler for UiInner {
         println!("The server encountered an error: {:?}", err);
     }
 
-    fn on_timeout(&mut self, event: Token) -> Result<()> {
+    fn on_timeout(&mut self, _: Token) -> Result<()> {
         loop{
             match self.rx.try_recv() {
                 Ok(cmd) => {self.out.send(Message::Text(json::encode(&cmd).unwrap())).unwrap();}
@@ -138,8 +138,8 @@ impl UiHandler{
                  }).unwrap();
         });
         let mut browser_proc = open_url(&url).unwrap();
-        browser_proc.wait();
-        rx.recv().unwrap()
+        unwrap_result!(browser_proc.wait());
+        unwrap_result!(rx.recv())
     }
 
     #[allow(dead_code)]

@@ -1,4 +1,4 @@
-#![allow(dead_code,unused_variables,unused_imports)]
+#![allow(dead_code)]
 
 extern crate crust;
 use super::woot_char::WootChar;
@@ -9,5 +9,3 @@ pub enum Operation {
     Insert {w_char: WootChar, from_site: PeerId},
     Delete {w_char: WootChar, from_site: PeerId}
 }
-unsafe impl Send for Operation {}
-unsafe impl Sync for Operation {}

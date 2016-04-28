@@ -1,11 +1,9 @@
-extern crate crust;
-extern crate rand;
 use std::sync::{Arc, Mutex, Once, ONCE_INIT};
 use std::mem;
 use storage::storage_helper::GitAccess;
 use compile::CompileMode;
-use self::crust::PeerId;
-use self::rand::random;
+use crust::PeerId;
+use rand::random;
 
 #[derive(Clone)]
 pub struct P2P3Globals {

@@ -1,26 +1,18 @@
-#![allow(dead_code,unused_variables,unused_imports,unused_must_use, unused_mut, unused_assignments)]
-extern crate bincode;
-extern crate crust;
-extern crate core;
-extern crate rustc_serialize;
+#![allow(dead_code)]
 pub mod bootstrap;
 
-use self::core::iter::FromIterator;
 use std::collections::{BTreeMap, HashMap};
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::sync::mpsc::channel;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
 use std::thread::JoinHandle;
 use async_queue::AsyncQueue;
-
-//sub-crate imports
-use self::crust::{Event, PeerId,Service, ConnectionInfoResult, OurConnectionInfo, TheirConnectionInfo};
-use self::bincode::rustc_serialize::{encode, decode};
-use self::rustc_serialize::json;
-use self::rustc_serialize::{Encodable, Decodable};
+use crust::{Event, PeerId,Service, ConnectionInfoResult, OurConnectionInfo, TheirConnectionInfo};
+use bincode;
+use bincode::rustc_serialize::{encode, decode};
+use rustc_serialize::{Encodable, Decodable};
 
 //Aliases
 use ::maidsafe_utilities::event_sender::MaidSafeEventCategory as EventCategory;
@@ -85,7 +77,8 @@ pub struct MessagePasser<T:Message>{
     conn_infos: Am<HashMap<u32,OurConnectionInfo>>,
     conn_cvar: Arc<Condvar>,
     // temp_conn_infos intended to be used for full socket connection to store our connection infos sent for other peers
-    temp_conn_infos: Am<HashMap<PeerId,u32>>
+    temp_conn_infos: Am<HashMap<PeerId,u32>>,
+    on_disconnect: Am<Box<FnMut(&PeerId) + Send>>
 }
 
 impl<T:Message> MessagePasser<T> {
@@ -115,7 +108,8 @@ impl<T:Message> MessagePasser<T> {
             conn_token: Arc::new(Mutex::new(0)),
             conn_cvar: Arc::new(Condvar::new()),
             conn_infos: Arc::new(Mutex::new(HashMap::new())),
-            temp_conn_infos: Arc::new(Mutex::new(HashMap::new()))
+            temp_conn_infos: Arc::new(Mutex::new(HashMap::new())),
+            on_disconnect: Arc::new(Mutex::new(Box::new(|_:&PeerId|{})))
         };
 
         let handler = {
@@ -165,7 +159,7 @@ impl<T:Message> MessagePasser<T> {
         }
     }
 
-    fn on_info_req(&self, pkt: Packet<T>, src: PeerId, bridge: PeerId){
+    fn on_info_req(&self, _: Packet<T>, src: PeerId, bridge: PeerId){
         println!("Got PeerConnectionInfoRequest from {:?} for {:?}", &src, &bridge);
 
         if unwrap_result!(self.peer_seqs.lock()).contains_key(&src) {
@@ -262,7 +256,7 @@ impl<T:Message> MessagePasser<T> {
     }
 
     // fired whenever a message is received
-    fn on_recv_pkt(&self, peer_id: PeerId, pkt: Packet<T>){
+    fn on_recv_pkt(&self, _: PeerId, pkt: Packet<T>){
         match pkt.protocol {
             Protocol::Normal =>{
                 self.on_recv_enq(pkt);
@@ -400,6 +394,12 @@ impl<T:Message> MessagePasser<T> {
         *seq_num+=1;
         *seq_num
     }
+
+    fn set_on_disconnect(&self, fun: Box<FnMut(&PeerId) + Send>)
+    {
+        let mut on_dis = unwrap_result!(self.on_disconnect.lock());
+        *on_dis = fun;
+    }
 }
 
 impl<T:Message> MessagePasserT<T> for MessagePasser<T>{
@@ -440,9 +440,12 @@ mod test{
         let (mp,_) = MessagePasser::new();
         let (mp2,_) = MessagePasser::new();
         let instant = Instant::now();
-        while (mp.peers().len() == 0 && instant.elapsed().as_secs() < 20) {}
-        while (mp2.peers().len() == 0 && instant.elapsed().as_secs() < 20) {}
-
+        while mp.peers().len() == 0 {
+            assert!(instant.elapsed().as_secs() < 20);
+        }
+        while mp2.peers().len() == 0 {
+            assert!(instant.elapsed().as_secs() < 20);
+        }
         assert!(mp.peers().len() == 1 && mp2.peers().len() == 1);
 
         mp.send(mp2.get_id(), TestMsg("message1".to_string()));
@@ -457,13 +460,13 @@ mod test{
         let (mp2,_) = MessagePasser::new();
         let (mp3,_) = MessagePasser::new();
         let instant = Instant::now();
-        while (mp.peers().len() < 2) {
+        while mp.peers().len() < 2 {
             assert!(instant.elapsed().as_secs() < 20);
         }
-        while (mp2.peers().len() < 2) {
+        while mp2.peers().len() < 2 {
             assert!(instant.elapsed().as_secs() < 20);
         }
-        while (mp3.peers().len() < 2) {
+        while mp3.peers().len() < 2 {
             assert!(instant.elapsed().as_secs() < 20);
         }
 

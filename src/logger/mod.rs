@@ -1,7 +1,7 @@
+#![allow(dead_code)]
 use network::Message;
 use async_queue::AsyncQueue;
 use std::sync::Arc;
-use std::collections::VecDeque;
 
 pub struct Logger<T:Message> {
     pub messages: Arc<AsyncQueue<T>>

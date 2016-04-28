@@ -1,7 +1,5 @@
-#![allow(dead_code,unused_variables,unused_imports)]
-use super::crust::PeerId;
-use super::rand::random;
-use super::char_id::{create_char_id, CharId};
+#![allow(dead_code)]
+use super::char_id::CharId;
 use super::woot_char::WootChar;
 
 #[derive(Clone)]
@@ -33,7 +31,7 @@ impl Sequence {
             CharId::Ending => {
                 val = true;
             },
-            CharId::Regular {site_id, unique_id} => {
+            CharId::Regular {site_id:_, unique_id:_} => {
                 for wchar in self.list.iter() {
                     if wchar.id == *id {
                         val = true;
@@ -140,7 +138,7 @@ impl Sequence {
             CharId::Ending => {
                 val = self.list.len();
             },
-            CharId::Regular {site_id, unique_id} => {
+            CharId::Regular {site_id:_, unique_id:_} => {
                 for (i, c) in self.list.iter().enumerate() {
                     if c.id == *id {
                         val = i;
@@ -161,7 +159,7 @@ impl Sequence {
                 let visibles: Vec<WootChar> = self.list.iter().cloned().filter(|c| c.visible).collect();
                 val = visibles.len() - 1;
             },
-            CharId::Regular {site_id, unique_id} => {
+            CharId::Regular {site_id:_, unique_id:_} => {
                 let visibles: Vec<WootChar> = self.list.iter().cloned().filter(|c| c.visible).collect();
                 println!("length {}", visibles.len());
                 for (i, c) in visibles.iter().enumerate() {
@@ -186,7 +184,7 @@ impl Sequence {
             CharId::Ending => {
                 return None;
             },
-            CharId::Regular {site_id, unique_id} => {
+            CharId::Regular {site_id:_, unique_id:_} => {
                 for wchar in self.list.iter() {
                     if wchar.id == mut_id {
                         return Some(wchar);
@@ -203,111 +201,118 @@ impl Sequence {
     }
 }
 
-#[test]
-fn test_visible_index_of_id() {
-    let mut seq = Sequence::new();
-    let id1: PeerId = random();
-    let char_id_1 = create_char_id(id1.clone(), 0);
-    let char_id_2 = create_char_id(id1.clone(), 1);
-    let char_id_3 = create_char_id(id1.clone(), 2);
-    let char_id_4 = create_char_id(id1.clone(), 3);
-    let char_id_5 = create_char_id(id1.clone(), 4);
-    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending);
-    let wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
-    seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
-    seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
-    seq.integrate_del(&wchar2);
-    seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    seq.integrate_ins(wchar4, char_id_3.clone(), CharId::Ending);
-    assert_eq!(seq.visible_index_of_id(&CharId::Beginning), 0);
-    assert_eq!(seq.visible_index_of_id(&CharId::Ending), 2);
-    assert_eq!(seq.visible_index_of_id(&char_id_3), 1);
-}
+#[cfg(test)]
+mod test{
+    use super::*;
 
-#[test]
-fn test_integrate_del() {
-    let mut seq = Sequence::new();
-    let id1: PeerId = random();
-    let char_id_1 = create_char_id(id1.clone(), 0);
-    let char_id_2 = create_char_id(id1.clone(), 1);
-    let char_id_3 = create_char_id(id1.clone(), 2);
-    let char_id_4 = create_char_id(id1.clone(), 3);
-    let char_id_5 = create_char_id(id1.clone(), 4);
-    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
-    let wchar5 = WootChar::new(char_id_5.clone(), 'e', CharId::Beginning, CharId::Ending);
-    seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
-    assert_eq!(seq.content(), "a");
-    seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
-    assert_eq!(seq.content(), "ab");
-    seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    assert_eq!(seq.content(), "abc");
-    seq.integrate_ins(wchar4, char_id_2, char_id_3);
-    assert_eq!(seq.content(), "abdc");
-    seq.integrate_del(&wchar2);
-    assert_eq!(seq.content(), "adc");
-}
+    use woot::char_id::CharId;
+    use woot::woot_char::WootChar;
+    use woot::char_id::create_char_id;
+    use crust::PeerId;
+    use rand::random;
 
-#[test]
-fn test_integrate_ins() {
-    let mut seq = Sequence::new();
-    let id1: PeerId = random();
-    let char_id_1 = create_char_id(id1.clone(), 0);
-    let char_id_2 = create_char_id(id1.clone(), 1);
-    let char_id_3 = create_char_id(id1.clone(), 2);
-    let char_id_4 = create_char_id(id1.clone(), 3);
-    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
-    seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
-    assert_eq!(seq.content(), "a");
-    seq.integrate_ins(wchar2, char_id_1, CharId::Ending);
-    assert_eq!(seq.content(), "ab");
-    seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
-    assert_eq!(seq.content(), "abc");
-    seq.integrate_ins(wchar4, char_id_2, char_id_3);
-    assert_eq!(seq.content(), "abdc");
-}
+    #[test]
+    fn test_visible_index_of_id() {
+        let mut seq = Sequence::new();
+        let id1: PeerId = random();
+        let char_id_1 = create_char_id(id1.clone(), 0);
+        let char_id_2 = create_char_id(id1.clone(), 1);
+        let char_id_3 = create_char_id(id1.clone(), 2);
+        let char_id_4 = create_char_id(id1.clone(), 3);
+        let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+        let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+        let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+        let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_3.clone(), CharId::Ending);
+        seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
+        seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
+        seq.integrate_del(&wchar2);
+        seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
+        seq.integrate_ins(wchar4, char_id_3.clone(), CharId::Ending);
+        assert_eq!(seq.visible_index_of_id(&CharId::Beginning), 0);
+        assert_eq!(seq.visible_index_of_id(&CharId::Ending), 2);
+        assert_eq!(seq.visible_index_of_id(&char_id_3), 1);
+    }
 
-#[test]
-fn test_sequence_ith_visible() {
-    let mut seq = Sequence::new();
-    let id1: PeerId = random();
-    let regId = create_char_id(id1.clone(), 1);
-    let wchar = WootChar::new(regId, 'a', CharId::Beginning, CharId::Beginning);
-    seq.list.push(wchar);
-    let mut wchar2 = WootChar::new(CharId::Beginning, 'a', CharId::Beginning, CharId::Beginning);
-    wchar2.visible = false;
-    seq.list.push(wchar2);
-    assert_eq!(None, seq.ith_visible(1));
-}
+    #[test]
+    fn test_integrate_del() {
+        let mut seq = Sequence::new();
+        let id1: PeerId = random();
+        let char_id_1 = create_char_id(id1.clone(), 0);
+        let char_id_2 = create_char_id(id1.clone(), 1);
+        let char_id_3 = create_char_id(id1.clone(), 2);
+        let char_id_4 = create_char_id(id1.clone(), 3);
+        //let char_id_5 = create_char_id(id1.clone(), 4);
+        let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+        let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+        let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+        let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+        seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
+        assert_eq!(seq.content(), "a");
+        seq.integrate_ins(wchar2.clone(), char_id_1, CharId::Ending);
+        assert_eq!(seq.content(), "ab");
+        seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
+        assert_eq!(seq.content(), "abc");
+        seq.integrate_ins(wchar4, char_id_2, char_id_3);
+        assert_eq!(seq.content(), "abdc");
+        seq.integrate_del(&wchar2);
+        assert_eq!(seq.content(), "adc");
+    }
 
-#[test]
-fn test_sub_sequence() {
-    let mut seq = Sequence::new();
-    let id1: PeerId = random();
-    let char_id_1 = create_char_id(id1.clone(), 0);
-    let char_id_2 = create_char_id(id1.clone(), 1);
-    let char_id_3 = create_char_id(id1.clone(), 2);
-    let char_id_4 = create_char_id(id1.clone(), 3);
-    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
-    let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
-    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
-    let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
-    seq.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
-    seq.integrate_ins(wchar2.clone(), char_id_1.clone(), CharId::Ending);
-    seq.integrate_ins(wchar3.clone(), char_id_2.clone(), CharId::Ending);
-    seq.integrate_ins(wchar4.clone(), char_id_2.clone(), char_id_3.clone());
-    let sub_seq_1 = seq.sub_sequence(wchar1.prev_id.clone(), wchar1.next_id.clone());
-    assert_eq!(sub_seq_1.len(), 4);
-    let sub_seq_2 = seq.sub_sequence(char_id_1.clone(), wchar1.next_id.clone());
-    assert_eq!(sub_seq_2.len(), 3);
-    let sub_seq_3 = seq.sub_sequence(char_id_1.clone(), char_id_4.clone());
-    assert_eq!(sub_seq_3.len(), 2);
+    #[test]
+    fn test_integrate_ins() {
+        let mut seq = Sequence::new();
+        let id1: PeerId = random();
+        let char_id_1 = create_char_id(id1.clone(), 0);
+        let char_id_2 = create_char_id(id1.clone(), 1);
+        let char_id_3 = create_char_id(id1.clone(), 2);
+        let char_id_4 = create_char_id(id1.clone(), 3);
+        let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+        let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+        let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+        let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+        seq.integrate_ins(wchar1, CharId::Beginning, CharId::Ending);
+        assert_eq!(seq.content(), "a");
+        seq.integrate_ins(wchar2, char_id_1, CharId::Ending);
+        assert_eq!(seq.content(), "ab");
+        seq.integrate_ins(wchar3, char_id_2.clone(), CharId::Ending);
+        assert_eq!(seq.content(), "abc");
+        seq.integrate_ins(wchar4, char_id_2, char_id_3);
+        assert_eq!(seq.content(), "abdc");
+    }
+
+    #[test]
+    fn test_sequence_ith_visible() {
+        let mut seq = Sequence::new();
+        let id1: PeerId = random();
+        let wchar = WootChar::new(create_char_id(id1.clone(), 1), 'a', CharId::Beginning, CharId::Beginning);
+        seq.list.push(wchar);
+        let mut wchar2 = WootChar::new(CharId::Beginning, 'a', CharId::Beginning, CharId::Beginning);
+        wchar2.visible = false;
+        seq.list.push(wchar2);
+        assert_eq!(None, seq.ith_visible(1));
+    }
+
+    #[test]
+    fn test_sub_sequence() {
+        let mut seq = Sequence::new();
+        let id1: PeerId = random();
+        let char_id_1 = create_char_id(id1.clone(), 0);
+        let char_id_2 = create_char_id(id1.clone(), 1);
+        let char_id_3 = create_char_id(id1.clone(), 2);
+        let char_id_4 = create_char_id(id1.clone(), 3);
+        let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending);
+        let wchar2 = WootChar::new(char_id_2.clone(), 'b', char_id_1.clone(), CharId::Ending);
+        let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_2.clone(), CharId::Ending);
+        let wchar4 = WootChar::new(char_id_4.clone(), 'd', char_id_2.clone(), char_id_3.clone());
+        seq.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
+        seq.integrate_ins(wchar2.clone(), char_id_1.clone(), CharId::Ending);
+        seq.integrate_ins(wchar3.clone(), char_id_2.clone(), CharId::Ending);
+        seq.integrate_ins(wchar4.clone(), char_id_2.clone(), char_id_3.clone());
+        let sub_seq_1 = seq.sub_sequence(wchar1.prev_id.clone(), wchar1.next_id.clone());
+        assert_eq!(sub_seq_1.len(), 4);
+        let sub_seq_2 = seq.sub_sequence(char_id_1.clone(), wchar1.next_id.clone());
+        assert_eq!(sub_seq_2.len(), 3);
+        let sub_seq_3 = seq.sub_sequence(char_id_1.clone(), char_id_4.clone());
+        assert_eq!(sub_seq_3.len(), 2);
+    }
 }

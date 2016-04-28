@@ -1,16 +1,8 @@
-#![allow(dead_code,unused_variables,unused_imports, unused_mut)]
+#![allow(dead_code)]
 
-use rustc_serialize::json;
-use super::char_id::create_char_id;
-use super::char_id::CharId;
-use super::woot_char::WootChar;
+use std::thread;
 use super::static_site::StaticSite;
-use super::operation::Operation;
-use std::{thread,env};
-use std::thread::sleep;
-use std::time::Duration;
 use std::sync::mpsc::channel;
-use super::crust::PeerId;
 
 pub fn run(static_site: StaticSite) {
 

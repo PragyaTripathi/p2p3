@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::sync::{Condvar, Mutex};
 use std::collections::VecDeque;
 
@@ -47,7 +48,7 @@ mod test{
 
     #[test]
     fn empty_try(){
-        let mut q: AsyncQueue<i32> = AsyncQueue::new();
+        let q: AsyncQueue<i32> = AsyncQueue::new();
         assert_eq!(q.try_deq(), None);
     }
 

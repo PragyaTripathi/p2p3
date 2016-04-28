@@ -1,22 +1,18 @@
-#![allow(dead_code,unused_variables,unused_imports)]
-
-extern crate rustc_serialize;
-
-use self::rustc_serialize::json;
+#![allow(dead_code)]
+use rustc_serialize::json;
 use std::collections::VecDeque;
-use super::crust::PeerId;
-use super::rand::random;
 use super::clock::Clock;
 use super::sequence::Sequence;
 use super::operation::Operation;
 use super::woot_char::WootChar;
 use super::char_id::CharId;
 use super::char_id::create_char_id;
-use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
-use utils::p2p3_globals;
-use network::{Message, MessagePasser, MessagePasserT};
+use network::{MessagePasser, MessagePasserT};
+use crust::PeerId;
+use ui::Command;
 use msg::Msg;
 use std::sync::Arc;
+use rand::random;
 
 pub type UISend = Box<Fn(Command) + Send + Sync>;
 
@@ -91,7 +87,7 @@ impl Site {
     pub fn implement_operation(&mut self, operation: Operation) {
         let given_operation = operation.clone();
         match operation {
-            Operation::Insert {w_char, from_site} => {
+            Operation::Insert {w_char, from_site:_} => {
                 let new_value = w_char.clone();
                 let prev_id = w_char.prev_id.clone();
                 let next_id = w_char.next_id.clone();
@@ -108,7 +104,7 @@ impl Site {
                     }
                 }
             },
-            Operation::Delete {w_char, from_site} => {
+            Operation::Delete {w_char, from_site:_} => {
                 let exists = self.sequence.exists(&w_char.id);
                 let visible_index = self.sequence.visible_index_of_id(&w_char.id);
                 if exists {
@@ -140,7 +136,7 @@ impl Site {
         match *id {
             CharId::Beginning => true,
             CharId::Ending => true,
-            CharId::Regular {site_id, unique_id} => self.sequence.exists(id)
+            CharId::Regular {site_id:_, unique_id:_} => self.sequence.exists(id)
         }
     }
 }
@@ -195,17 +191,16 @@ fn test_operation() {
     let id3: PeerId = random();
     let mut site = create_test_site_with_id(id1.clone());
     let mut site2 = create_test_site_with_id(id2.clone());
-    let mut site3 = create_test_site_with_id(id3.clone());
     let char_id_1 = create_char_id(id1.clone(), 0);
     let char_id_2 = create_char_id(id2.clone(), 0);
     let char_id_3 = create_char_id(id1.clone(), 1);
     let char_id_4 = create_char_id(id3.clone(), 0);
     let char_id_5 = create_char_id(id2.clone(), 1);
-    let mut wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
-    let mut wchar2 = WootChar::new(char_id_2.clone(), 'b', CharId::Beginning, CharId::Ending); // From site 2
-    let mut wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_1.clone(), CharId::Ending); // From site 1
-    let mut wchar4 = WootChar::new(char_id_4.clone(), 'd', CharId::Beginning, CharId::Ending); // From site 3
-    let mut wchar5 = WootChar::new(char_id_5.clone(), 'e', char_id_2.clone(), CharId::Ending); // From site 2
+    let wchar1 = WootChar::new(char_id_1.clone(), 'a', CharId::Beginning, CharId::Ending); // From site 1
+    let wchar2 = WootChar::new(char_id_2.clone(), 'b', CharId::Beginning, CharId::Ending); // From site 2
+    let wchar3 = WootChar::new(char_id_3.clone(), 'c', char_id_1.clone(), CharId::Ending); // From site 1
+    let wchar4 = WootChar::new(char_id_4.clone(), 'd', CharId::Beginning, CharId::Ending); // From site 3
+    let wchar5 = WootChar::new(char_id_5.clone(), 'e', char_id_2.clone(), CharId::Ending); // From site 2
     site.sequence.integrate_ins(wchar1.clone(), CharId::Beginning, CharId::Ending);
     println!("Implementing insert operation from site 1");
     site2.implement_operation(Operation::Insert{w_char: wchar1.clone(), from_site: id1.clone()});

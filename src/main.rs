@@ -1,54 +1,32 @@
-#![allow(dead_code,unused_variables,unused_imports,unused_must_use)]
+#![allow(dead_code)]
 
-extern crate crust;
-extern crate time;
-extern crate git2;
 #[macro_use]
 extern crate maidsafe_utilities;
-extern crate rustc_serialize;
-extern crate docopt;
 extern crate rand;
 extern crate getopts;
-extern crate ws;
-extern crate url;
-extern crate bincode;
+extern crate crust;
+extern crate p2p3;
 
-mod commit;
-mod compile;
-mod logger;
-pub mod network;
-mod permission;
-pub mod storage;
-mod ui;
-mod woot;
-mod utils;
-mod async_queue;
-pub mod msg;
-
-use std::{thread,env};
-use std::sync::{Arc,Mutex};
+use std::env;
 use getopts::Options;
-use storage::storage_helper::GitAccess;
-use woot::static_site::StaticSite;
-use woot::site::UISend;
-use woot::operation_thread::run;
-use permission::permissions_handler::get_permission_level;
-use permission::permissions_handler::PermissionLevel;
-use compile::{CompileMode, run_code};
-use ui::{UiHandler, Command, FnCommand, open_url, static_ui_handler};
-use utils::p2p3_globals;
-use network::{Message, MessagePasser, MessagePasserT};
-use network::bootstrap::BootstrapHandler;
-use msg::Msg;
+use p2p3::storage::storage_helper::GitAccess;
+use p2p3::woot::static_site::StaticSite;
+use p2p3::woot::site::UISend;
+use p2p3::permission::permissions_handler::get_permission_level;
+use p2p3::permission::permissions_handler::PermissionLevel;
+use p2p3::compile::{CompileMode, run_code};
+use p2p3::ui::{Command, FnCommand, static_ui_handler};
+use p2p3::utils::p2p3_globals;
+use p2p3::network::{MessagePasser, MessagePasserT};
+use p2p3::network::bootstrap::BootstrapHandler;
+use p2p3::msg::Msg;
 use std::io::stdin;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use self::crust::PeerId;
-use self::rand::random;
-
-use self::bincode::rustc_serialize::{encode, decode};
-use self::rustc_serialize::json;
+use std::sync::Arc;
+use crust::PeerId;
+use rand::random;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -101,7 +79,7 @@ fn main() {
     }
     match git_access.clone_repo() {
         Ok(()) => {},
-        Err(e) => {
+        Err(_) => {
             println!("The folder already exits");
         },
     };
@@ -130,6 +108,7 @@ fn main() {
 
     let static_ui_handler = static_ui_handler(port_number, p2p3_url.clone());
     println!("Called Static UI Handler");
+    let mp = mp.clone();
     let static_ui = static_ui_handler.inner.clone();
 
     let ui_send: UISend = Box::new(move|comm| {
@@ -152,7 +131,6 @@ fn main() {
             Command::Compile => {
                 let globals = p2p3_globals().inner.clone();
                 let values = globals.lock().unwrap();
-                let site_id = values.get_site_id();
                 let mut site = site_inner.lock().unwrap();
                 let ui = static_ui.lock().unwrap();
                 match run_code(values.get_compile_mode(), &site.content()) {
@@ -162,16 +140,12 @@ fn main() {
             },
             Command::InsertChar(position, character) => {
                 println!("Received {} {}", position, character);
-                let globals = p2p3_globals().inner.clone();
-                let values = globals.lock().unwrap();
                 let mut site = site_inner.lock().unwrap();
                 site.generate_insert(position, character, true);
                 // println!("Site content {}", site.content());
             },
             Command::DeleteChar(position) => {
                 println!("Received {}", position);
-                let globals = p2p3_globals().inner.clone();
-                let values = globals.lock().unwrap();
                 let mut site = site_inner.lock().unwrap();
                 site.generate_del(position);
                 println!("Site content {}", site.content());
@@ -183,10 +157,10 @@ fn main() {
                 ga.commit_path("Commit message").unwrap();
                 ga.push().unwrap();
             },
-            Command::InsertString(position, content) => {
+            Command::InsertString(_,_ /*position, content*/) => {
 
             },
-            Command::Output(results) => {
+            Command::Output(_ /*results*/ ) => {
 
             },
             Command::DisableEditing(_) => {

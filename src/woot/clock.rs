@@ -1,4 +1,4 @@
-#![allow(dead_code,unused_variables,unused_imports)]
+#![allow(dead_code)]
 use std::cmp::Ordering;
 use std::cell::Cell;
 

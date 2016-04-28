@@ -1,12 +1,7 @@
 #![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-extern crate git2;
-
-use git2::{Repository, Error};
-use git2::PushOptions;
-use git2::{RemoteCallbacks, Cred};
-use git2::{FileFavor, MergeOptions, FetchOptions};
+use git2;
+use git2::{PushOptions,FileFavor, MergeOptions,
+    FetchOptions,RemoteCallbacks, Cred, Repository, Error};
 use git2::build::CheckoutBuilder;
 use std::path::Path;
 

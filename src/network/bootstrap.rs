@@ -1,18 +1,15 @@
-extern crate config_file_handler;
-extern crate crust;
-extern crate socket_addr;
-
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
-use ::storage::storage_helper::GitAccess;
-use self::crust::{TheirConnectionInfo,StaticContactInfo};
-use self::socket_addr::SocketAddr;
+use crust::{TheirConnectionInfo,StaticContactInfo};
+use socket_addr::SocketAddr;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use rustc_serialize::json::as_pretty_json;
 use super::{MessagePasser,Message};
 use utils::p2p3_globals;
+use crust;
+use config_file_handler;
 
 #[derive(PartialEq, Eq, Debug, RustcDecodable, RustcEncodable, Clone)]
 pub struct Config {
@@ -53,12 +50,11 @@ pub struct BootstrapHandler {
 impl BootstrapHandler {
     pub fn bootstrap_load() -> BootstrapHandler{
         // Load the p2p3 config file in the same directory of the working file.
-        let mut git_local_url = String::new();
-        {
+        let git_local_url = {
             let globals = p2p3_globals().inner.clone();
-            let mut values = globals.lock().unwrap();
-            git_local_url = values.get_git_access().local_url.clone();
-        }
+            let values = globals.lock().unwrap();
+            values.get_git_access().local_url.clone()
+        };
 
         let p2p3_file_name = String::from("config.p2p3");
         let p2p3_file_url = git_local_url.clone() + &p2p3_file_name;
@@ -104,12 +100,11 @@ impl BootstrapHandler {
         let update_str = as_pretty_json(&boot_clone.config);
         let pretty_json_str = update_str.to_string();
 
-        let mut git_access = GitAccess::default();
-        {
+        let git_access = {
             let globals = p2p3_globals().inner.clone();
-            let mut values = globals.lock().unwrap();
-            git_access = values.get_git_access();
-        }
+            let values = globals.lock().unwrap();
+            values.get_git_access()
+        };
 
         // Get the p2p3 config file path and store the new config infomation it in that path.
         let path_str = &self.full_path;
@@ -138,7 +133,7 @@ impl BootstrapHandler {
 /*
  *  file.suffix -> file.crust.config
  */
-pub fn get_crust_config() -> Result<::std::ffi::OsString, self::crust::Error> {
+pub fn get_crust_config() -> Result<::std::ffi::OsString, crust::Error> {
     let mut name = try!(config_file_handler::exe_file_stem());
     name.push(".crust.config");
     Ok(name)
